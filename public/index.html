@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CAPT Garuda Lounge Booking</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏢 CAPT Garuda Lounge</h1>
+            <p class="subtitle">Book Your Time Slot</p>
+        </header>
+
+        <!-- User Info Section -->
+        <div id="userInfo" class="user-info hidden">
+            <div class="user-greeting">
+                <span class="user-name">Hello, <strong id="userName"></strong>!</span>
+            </div>
+        </div>
+
+        <!-- Calendar Section -->
+        <div class="calendar-section">
+            <div class="calendar-header">
+                <button id="prevMonth" class="nav-button">‹</button>
+                <h2 id="currentMonth"></h2>
+                <button id="nextMonth" class="nav-button">›</button>
+            </div>
+            <div id="calendar" class="calendar"></div>
+        </div>
+
+        <!-- Selected Date Info -->
+        <div id="selectedDateInfo" class="selected-date-info hidden">
+            <h3>Selected Date: <span id="selectedDate"></span></h3>
+        </div>
+
+        <!-- Time Slots Section -->
+        <div id="timeSlotsSection" class="time-slots-section hidden">
+            <h3>Available Time Slots</h3>
+            <div id="timeSlots" class="time-slots"></div>
+        </div>
+
+        <!-- Booking Form -->
+        <div id="bookingForm" class="booking-form hidden">
+            <h3>Confirm Booking</h3>
+            <p>Date: <strong id="bookingDate"></strong></p>
+            <p>Time: <strong id="bookingTime"></strong></p>
+            <textarea id="bookingNotes" placeholder="Add any notes or special requests (optional)" rows="3" maxlength="500" aria-label="Booking notes"></textarea>
+            <div class="form-actions">
+                <button id="cancelBooking" class="btn btn-secondary">Cancel</button>
+                <button id="confirmBooking" class="btn btn-primary">Confirm Booking</button>
+            </div>
+        </div>
+
+        <!-- My Bookings Section -->
+        <div class="my-bookings-section">
+            <h3>My Bookings</h3>
+            <div id="myBookings" class="my-bookings">
+                <p class="empty-message">No bookings yet</p>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="toast hidden"></div>
+    </div>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "name": "loungebookingbot",
+  "version": "1.0.0",
+  "description": "Telegram Mini App for booking time slots at CAPT Garuda Lounge",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "bot": "node bot.js",
+    "dev": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "booking",
+    "lounge"
+  ],
+  "author": "CAPT Garuda",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^2.2.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "node-telegram-bot-api": "^0.67.0",
+    "sqlite3": "^5.1.7"
+  }
+}
