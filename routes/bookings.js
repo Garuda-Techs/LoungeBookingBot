@@ -47,6 +47,13 @@ async function getOrCreateUser(telegramUser) {
 router.get('/available/:date', async (req, res) => {
   try {
     const { date } = req.params;
+    
+    // Validate date format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+    
     const database = db.getDb();
     
     // Define all possible time slots (9 AM to 9 PM, hourly)
@@ -84,8 +91,47 @@ router.post('/', async (req, res) => {
   try {
     const { telegramUser, date, timeSlot, notes } = req.body;
     
-    if (!telegramUser || !date || !timeSlot) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    // Validate required fields
+    if (!telegramUser) {
+      return res.status(400).json({ error: 'Missing telegramUser' });
+    }
+    if (!date) {
+      return res.status(400).json({ error: 'Missing date' });
+    }
+    if (!timeSlot) {
+      return res.status(400).json({ error: 'Missing timeSlot' });
+    }
+    
+    // Validate date format (YYYY-MM-DD)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+    
+    // Validate date is not in the past
+    const bookingDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (bookingDate < today) {
+      return res.status(400).json({ error: 'Cannot book dates in the past' });
+    }
+    
+    // Validate time slot format (HH:MM)
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (!timeRegex.test(timeSlot)) {
+      return res.status(400).json({ error: 'Invalid time slot format. Use HH:MM' });
+    }
+    
+    // Validate time slot is in allowed range
+    const allowedSlots = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', 
+                         '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
+    if (!allowedSlots.includes(timeSlot)) {
+      return res.status(400).json({ error: 'Time slot not available' });
+    }
+    
+    // Validate notes length
+    if (notes && notes.length > 500) {
+      return res.status(400).json({ error: 'Notes must be 500 characters or less' });
     }
     
     // Get or create user
@@ -93,38 +139,27 @@ router.post('/', async (req, res) => {
     
     const database = db.getDb();
     
-    // Check if slot is available
-    database.get(
-      'SELECT * FROM bookings WHERE date = ? AND time_slot = ? AND status = ?',
-      [date, timeSlot, 'active'],
-      (err, row) => {
+    // Create booking - let database constraint handle duplicates
+    database.run(
+      'INSERT INTO bookings (user_id, date, time_slot, notes) VALUES (?, ?, ?, ?)',
+      [user.id, date, timeSlot, notes],
+      function(err) {
         if (err) {
-          return res.status(500).json({ error: 'Database error' });
-        }
-        
-        if (row) {
-          return res.status(409).json({ error: 'Time slot already booked' });
-        }
-        
-        // Create booking
-        database.run(
-          'INSERT INTO bookings (user_id, date, time_slot, notes) VALUES (?, ?, ?, ?)',
-          [user.id, date, timeSlot, notes],
-          function(err) {
-            if (err) {
-              return res.status(500).json({ error: 'Failed to create booking' });
-            }
-            
-            res.status(201).json({
-              id: this.lastID,
-              user_id: user.id,
-              date,
-              time_slot: timeSlot,
-              notes,
-              status: 'active'
-            });
+          // Check if error is due to unique constraint violation
+          if (err.message && err.message.includes('UNIQUE constraint failed')) {
+            return res.status(409).json({ error: 'Time slot already booked' });
           }
-        );
+          return res.status(500).json({ error: 'Failed to create booking' });
+        }
+        
+        res.status(201).json({
+          id: this.lastID,
+          user_id: user.id,
+          date,
+          time_slot: timeSlot,
+          notes,
+          status: 'active'
+        });
       }
     );
   } catch (error) {

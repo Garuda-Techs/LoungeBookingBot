@@ -38,9 +38,15 @@ function initialize() {
             status TEXT DEFAULT 'active',
             notes TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            UNIQUE(date, time_slot)
+            FOREIGN KEY (user_id) REFERENCES users(id)
           )
+        `);
+        
+        // Create unique index for active bookings only
+        db.run(`
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_active_bookings 
+          ON bookings(date, time_slot) 
+          WHERE status = 'active'
         `, (err) => {
           if (err) {
             return reject(err);
