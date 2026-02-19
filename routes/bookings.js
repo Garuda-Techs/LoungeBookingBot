@@ -135,10 +135,10 @@ router.post('/', async (req, res) => {
     
     const database = db.getDb();
     
-    // Create booking - let database constraint handle duplicates
+    // Create booking - explicitly set status to 'active'
     database.run(
-      'INSERT INTO bookings (user_id, date, time_slot, notes) VALUES (?, ?, ?, ?)',
-      [user.id, date, timeSlot, notes],
+      'INSERT INTO bookings (user_id, date, time_slot, notes, status) VALUES (?, ?, ?, ?, ?)',
+      [user.id, date, timeSlot, notes, 'active'],
       function(err) {
         if (err) {
           // Check if error is due to unique constraint violation
