@@ -312,71 +312,56 @@ async function loadMyBookings() {
     }
 }
 
-// Display user's bookings
-function displayMyBookings(bookings) {
-    const myBookingsContainer = document.getElementById('myBookings');
+// Display time slots
+function displayTimeSlots(available, booked) {
+    const timeSlotsSection = document.getElementById('timeSlotsSection');
+    const timeSlotsContainer = document.getElementById('timeSlots');
     
-    myBookingsContainer.innerHTML = '';
+    timeSlotsContainer.innerHTML = '';
     
-    if (bookings.length === 0) {
-        myBookingsContainer.innerHTML = '<p class="empty-message">No bookings yet</p>';
+    // Combine available and booked slots from the backend
+    const allSlots = [...available, ...booked].sort();
+    
+    if (allSlots.length === 0) {
+        timeSlotsContainer.innerHTML = '<p class="empty-message">No time slots available</p>';
         return;
     }
     
-    // Filter future bookings and sort
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const futureBookings = bookings.filter(booking => {
-        const bookingDate = new Date(booking.date);
-        return bookingDate >= today;
-    });
-    
-    if (futureBookings.length === 0) {
-        myBookingsContainer.innerHTML = '<p class="empty-message">No upcoming bookings</p>';
-        return;
-    }
-    
-    futureBookings.forEach(booking => {
-        const card = document.createElement('div');
-        card.className = 'booking-card';
+    // Check if the selected date is today
+    const now = new Date();
+    const isToday = selectedDate && 
+                    selectedDate.getDate() === now.getDate() &&
+                    selectedDate.getMonth() === now.getMonth() &&
+                    selectedDate.getFullYear() === now.getFullYear();
+                    
+    const currentHour = now.getHours();
+
+    allSlots.forEach(slot => {
+        const slotElement = document.createElement('div');
+        slotElement.className = 'time-slot';
+        slotElement.textContent = slot;
         
-        const header = document.createElement('div');
-        header.className = 'booking-card-header';
+        // Extract the hour as a number (e.g., "09:00" becomes 9)
+        const slotHour = parseInt(slot.split(':')[0], 10);
         
-        const date = document.createElement('div');
-        date.className = 'booking-card-date';
-        date.textContent = formatDate(new Date(booking.date));
-        
-        const time = document.createElement('div');
-        time.className = 'booking-card-time';
-        time.textContent = booking.time_slot;
-        
-        header.appendChild(date);
-        header.appendChild(time);
-        
-        card.appendChild(header);
-        
-        if (booking.notes) {
-            const notes = document.createElement('div');
-            notes.className = 'booking-card-notes';
-            notes.textContent = booking.notes;
-            card.appendChild(notes);
+        if (booked.includes(slot)) {
+            // Rule 1: It's already booked
+            slotElement.classList.add('booked');
+            slotElement.title = 'Already booked';
+        } else if (isToday && slotHour <= currentHour) {
+            // Rule 2: It's today, and the time has already passed
+            // (Uses the same 'disabled' class you use for past calendar days)
+            slotElement.classList.add('disabled'); 
+            slotElement.title = 'Time has passed';
+        } else {
+            // Rule 3: It's available!
+            slotElement.addEventListener('click', () => selectTimeSlot(slot));
         }
         
-        const actions = document.createElement('div');
-        actions.className = 'booking-card-actions';
-        
-        const cancelBtn = document.createElement('button');
-        cancelBtn.className = 'btn btn-danger';
-        cancelBtn.textContent = 'Cancel';
-        cancelBtn.addEventListener('click', () => cancelBooking(booking.id));
-        
-        actions.appendChild(cancelBtn);
-        card.appendChild(actions);
-        
-        myBookingsContainer.appendChild(card);
+        timeSlotsContainer.appendChild(slotElement);
     });
+    
+    timeSlotsSection.classList.remove('hidden');
 }
 
 // Cancel booking

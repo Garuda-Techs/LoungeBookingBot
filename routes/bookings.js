@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database');
 
+// Generate 24 1-hour slots: ['00:00', '01:00', ..., '23:00']
+const ALL_TIME_SLOTS = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
+
 // Get or create user
 async function getOrCreateUser(telegramUser) {
   return new Promise((resolve, reject) => {
@@ -56,12 +59,6 @@ router.get('/available/:date', async (req, res) => {
     
     const database = db.getDb();
     
-    // Define all possible time slots (9 AM to 9 PM, hourly)
-    const allTimeSlots = [
-      '09:00', '10:00', '11:00', '12:00', '13:00', '14:00',
-      '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'
-    ];
-    
     // Get booked slots for the date
     database.all(
       'SELECT time_slot FROM bookings WHERE date = ? AND status = ?',
@@ -72,7 +69,8 @@ router.get('/available/:date', async (req, res) => {
         }
         
         const bookedSlots = rows.map(row => row.time_slot);
-        const availableSlots = allTimeSlots.filter(slot => !bookedSlots.includes(slot));
+        // Compare against our new 24-hour list
+        const availableSlots = ALL_TIME_SLOTS.filter(slot => !bookedSlots.includes(slot));
         
         res.json({
           date,
@@ -122,10 +120,8 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Invalid time slot format. Use HH:MM' });
     }
     
-    // Validate time slot is in allowed range
-    const allowedSlots = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', 
-                         '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
-    if (!allowedSlots.includes(timeSlot)) {
+    // Validate time slot is in our new 24-hour range
+    if (!ALL_TIME_SLOTS.includes(timeSlot)) {
       return res.status(400).json({ error: 'Time slot not available' });
     }
     
