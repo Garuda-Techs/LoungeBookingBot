@@ -312,6 +312,79 @@ async function loadMyBookings() {
     }
 }
 
+// Display user's bookings
+function displayMyBookings(bookings) {
+    const myBookingsContainer = document.getElementById('myBookings');
+    
+    myBookingsContainer.innerHTML = '';
+    
+    if (bookings.length === 0) {
+        myBookingsContainer.innerHTML = '<p class="empty-message">No bookings yet</p>';
+        return;
+    }
+    
+    // Filter future bookings and sort
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const futureBookings = bookings.filter(booking => {
+        // Manually split the date to ensure it works on iPhones/Safari
+        const [year, month, day] = booking.date.split('-');
+        const bookingDate = new Date(year, month - 1, day);
+        return bookingDate >= today;
+    });
+    
+    if (futureBookings.length === 0) {
+        myBookingsContainer.innerHTML = '<p class="empty-message">No upcoming bookings</p>';
+        return;
+    }
+    
+    futureBookings.forEach(booking => {
+        const card = document.createElement('div');
+        card.className = 'booking-card';
+        
+        const header = document.createElement('div');
+        header.className = 'booking-card-header';
+        
+        // Ensure display formatting also uses the iOS safe date
+        const [year, month, day] = booking.date.split('-');
+        const displayDate = new Date(year, month - 1, day);
+        
+        const date = document.createElement('div');
+        date.className = 'booking-card-date';
+        date.textContent = formatDate(displayDate);
+        
+        const time = document.createElement('div');
+        time.className = 'booking-card-time';
+        time.textContent = booking.time_slot;
+        
+        header.appendChild(date);
+        header.appendChild(time);
+        
+        card.appendChild(header);
+        
+        if (booking.notes) {
+            const notes = document.createElement('div');
+            notes.className = 'booking-card-notes';
+            notes.textContent = booking.notes;
+            card.appendChild(notes);
+        }
+        
+        const actions = document.createElement('div');
+        actions.className = 'booking-card-actions';
+        
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn btn-danger';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', () => cancelBooking(booking.id));
+        
+        actions.appendChild(cancelBtn);
+        card.appendChild(actions);
+        
+        myBookingsContainer.appendChild(card);
+    });
+}
+
 // Display time slots
 function displayTimeSlots(available, booked) {
     const timeSlotsSection = document.getElementById('timeSlotsSection');
