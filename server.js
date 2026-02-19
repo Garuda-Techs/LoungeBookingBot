@@ -8,6 +8,15 @@ require('dotenv').config();
 const db = require('./database');
 const bookingRoutes = require('./routes/bookings');
 
+// Initialize Telegram Bot
+// This ensures the bot runs in the same process as the server
+try {
+  require('./bot');
+  console.log('Telegram bot initialized');
+} catch (error) {
+  console.error('Failed to initialize Telegram bot:', error);
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 

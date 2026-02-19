@@ -1,7 +1,19 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'lounge_bookings.db');
+
+// Ensure the directory for the database exists
+const dbDir = path.dirname(DB_PATH);
+if (!fs.existsSync(dbDir)) {
+  try {
+    fs.mkdirSync(dbDir, { recursive: true });
+    console.log(`Created database directory: ${dbDir}`);
+  } catch (err) {
+    console.error(`Error creating database directory ${dbDir}:`, err);
+  }
+}
 
 let db = null;
 
@@ -12,7 +24,7 @@ function initialize() {
         return reject(err);
       }
       
-      console.log('Connected to SQLite database');
+      console.log(`Connected to SQLite database at ${DB_PATH}`);
       
       // Create tables
       db.serialize(() => {

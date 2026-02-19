@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "description": "Telegram Mini App for booking time slots at CAPT Garuda Lounge",
   "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node server.js",
-    "bot": "node bot.js",
     "dev": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
