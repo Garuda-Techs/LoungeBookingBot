@@ -222,6 +222,16 @@ header h1 {
     background: white;
 }
 
+/* NEW: Indicator for past/disabled slots */
+.time-slot.disabled {
+    background-color: #f8fafc; /* Very light grey */
+    color: #cbd5e1;            /* Muted slate text */
+    border-color: #f1f5f9;     /* Faded border */
+    cursor: not-allowed;       /* "No entry" icon on hover */
+    opacity: 0.7;
+    pointer-events: none;      /* Extra safety to prevent clicks */
+}
+
 .time-slot.selected-slot {
     background: var(--primary-color) !important;
     color: #000000 !important;
