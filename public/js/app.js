@@ -267,23 +267,33 @@ function showBookingForm() {
 function hideBookingForm() {
     const bookingForm = document.getElementById('bookingForm');
     const bookingNotes = document.getElementById('bookingNotes');
+    const bookingTime = document.getElementById('bookingTime');
     
+    // 1. Hide the confirmation section
     bookingForm.classList.add('hidden');
+    
+    // 2. Clear the input and the stuck text labels
     bookingNotes.value = '';
+    bookingTime.textContent = ''; // This clears the "02:00, 03:00" text
+    
+    // 3. Wipe the underlying state array
     selectedTimeSlots = [];
     
+    // 4. Remove the yellow highlights from the time slot buttons
     const highlightedSlots = document.querySelectorAll('.time-slot.selected-slot');
     highlightedSlots.forEach(slot => {
         slot.classList.remove('selected-slot');
     });
 
+    // 5. Hide the supporting sections to force a fresh start
+    document.getElementById('selectedDateInfo').classList.add('hidden');
+    document.getElementById('timeSlotsSection').classList.add('hidden');
+    
+    // 6. Deselect the calendar date
     const selectedCalendarDay = document.querySelector('.calendar-day.selected');
     if (selectedCalendarDay) {
         selectedCalendarDay.classList.remove('selected');
     }
-    
-    document.getElementById('selectedDateInfo').classList.add('hidden');
-    document.getElementById('timeSlotsSection').classList.add('hidden');
 }
 
 // Confirm booking with Level support
