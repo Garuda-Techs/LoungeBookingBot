@@ -14,14 +14,18 @@
             <p class="subtitle">Book Your Time Slot</p>
         </header>
 
-        <!-- User Info Section -->
         <div id="userInfo" class="user-info hidden">
             <div class="user-greeting">
                 <span class="user-name">Hello, <strong id="userName"></strong>!</span>
             </div>
         </div>
 
-        <!-- Calendar Section -->
+        <div class="lounge-selector">
+            <button class="level-btn active" data-level="9">Level 9</button>
+            <button class="level-btn" data-level="10">Level 10</button>
+            <button class="level-btn" data-level="11">Level 11</button>
+        </div>
+
         <div class="calendar-section">
             <div class="calendar-header">
                 <button id="prevMonth" class="nav-button">‹</button>
@@ -31,20 +35,18 @@
             <div id="calendar" class="calendar"></div>
         </div>
 
-        <!-- Selected Date Info -->
         <div id="selectedDateInfo" class="selected-date-info hidden">
             <h3>Selected Date: <span id="selectedDate"></span></h3>
         </div>
 
-        <!-- Time Slots Section -->
         <div id="timeSlotsSection" class="time-slots-section hidden">
             <h3>Available Time Slots</h3>
             <div id="timeSlots" class="time-slots"></div>
         </div>
 
-        <!-- Booking Form -->
         <div id="bookingForm" class="booking-form hidden">
             <h3>Confirm Booking</h3>
+            <p>Lounge: <strong>Level <span id="confirmLevel">9</span></strong></p>
             <p>Date: <strong id="bookingDate"></strong></p>
             <p>Time: <strong id="bookingTime"></strong></p>
             <textarea id="bookingNotes" placeholder="Add any notes or special requests (optional)" rows="3" maxlength="500" aria-label="Booking notes"></textarea>
@@ -54,7 +56,6 @@
             </div>
         </div>
 
-        <!-- My Bookings Section -->
         <div class="my-bookings-section">
             <h3>My Bookings</h3>
             <div id="myBookings" class="my-bookings">
@@ -62,12 +63,10 @@
             </div>
         </div>
 
-        <!-- Loading Spinner -->
         <div id="loading" class="loading hidden">
             <div class="spinner"></div>
         </div>
 
-        <!-- Toast Notification -->
         <div id="toast" class="toast hidden"></div>
     </div>
 

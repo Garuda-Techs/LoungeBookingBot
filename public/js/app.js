@@ -5,7 +5,8 @@ let telegramUser = null;
 // State
 let currentDate = new Date();
 let selectedDate = null;
-let selectedTimeSlots = []; // Changed to array for multiple selections
+let selectedTimeSlots = []; 
+let selectedLevel = 9; // NEW: Track which floor is selected (9, 10, or 11)
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
@@ -24,12 +25,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Fallback for testing without Telegram
         telegramUser = {
             id: 'test_user',
-            first_name: 'Test',
-            last_name: 'User',
-            username: 'testuser'
+            first_name: 'Gabriel',
+            last_name: 'Wan',
+            username: 'gabrielwan'
         };
         displayUserInfo();
     }
+    
+    // NEW: Level Switcher Logic
+    document.querySelectorAll('.level-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Update UI: Toggle 'active' class
+            document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Update State
+            selectedLevel = parseInt(this.dataset.level);
+            
+            // Update the confirmation form label
+            const confirmLevel = document.getElementById('confirmLevel');
+            if (confirmLevel) confirmLevel.textContent = selectedLevel;
+
+            // Reset and refresh data for the new floor
+            if (selectedDate) {
+                loadTimeSlots(selectedDate);
+            }
+            hideBookingForm();
+        });
+    });
     
     // Initialize calendar
     renderCalendar();
@@ -72,15 +95,11 @@ function renderCalendar() {
     const calendar = document.getElementById('calendar');
     const monthYear = document.getElementById('currentMonth');
     
-    // Clear previous calendar
     calendar.innerHTML = '';
-    
-    // Set month/year header
     const months = ['January', 'February', 'March', 'April', 'May', 'June',
                     'July', 'August', 'September', 'October', 'November', 'December'];
     monthYear.textContent = `${months[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
     
-    // Add day headers
     const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     dayHeaders.forEach(day => {
         const dayHeader = document.createElement('div');
@@ -89,24 +108,20 @@ function renderCalendar() {
         calendar.appendChild(dayHeader);
     });
     
-    // Get first day of month and number of days
     const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
     const numDays = lastDay.getDate();
     const startingDayOfWeek = firstDay.getDay();
     
-    // Get today's date for comparison
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Add empty cells for days before month starts
     for (let i = 0; i < startingDayOfWeek; i++) {
         const emptyDay = document.createElement('div');
         emptyDay.className = 'calendar-day other-month';
         calendar.appendChild(emptyDay);
     }
     
-    // Add days of the month
     for (let day = 1; day <= numDays; day++) {
         const dayElement = document.createElement('div');
         dayElement.className = 'calendar-day';
@@ -115,14 +130,12 @@ function renderCalendar() {
         const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
         dateObj.setHours(0, 0, 0, 0);
         
-        // Disable past dates
         if (dateObj < today) {
             dayElement.classList.add('disabled');
         } else {
             dayElement.addEventListener('click', () => selectDate(dateObj));
         }
         
-        // Highlight selected date
         if (selectedDate && 
             dateObj.getDate() === selectedDate.getDate() &&
             dateObj.getMonth() === selectedDate.getMonth() &&
@@ -137,30 +150,27 @@ function renderCalendar() {
 // Select a date
 async function selectDate(date) {
     selectedDate = date;
-    selectedTimeSlots = []; // Reset array when new date is clicked
+    selectedTimeSlots = []; 
     
     renderCalendar();
     
-    // Show selected date
     const selectedDateInfo = document.getElementById('selectedDateInfo');
     const selectedDateSpan = document.getElementById('selectedDate');
     selectedDateSpan.textContent = formatDate(date);
     selectedDateInfo.classList.remove('hidden');
     
-    // Load available time slots
     await loadTimeSlots(date);
-    
-    // Hide booking form if showing
     hideBookingForm();
 }
 
-// Load time slots for a date
+// Load time slots for a date AND level
 async function loadTimeSlots(date) {
     showLoading(true);
     
     try {
         const dateStr = formatDateForAPI(date);
-        const response = await fetch(`/api/bookings/available/${dateStr}`);
+        // UPDATED: Added ?level= to the fetch URL
+        const response = await fetch(`/api/bookings/available/${dateStr}?level=${selectedLevel}`);
         
         if (!response.ok) {
             throw new Error('Failed to load time slots');
@@ -182,8 +192,6 @@ function displayTimeSlots(available, booked) {
     const timeSlotsContainer = document.getElementById('timeSlots');
     
     timeSlotsContainer.innerHTML = '';
-    
-    // Combine available and booked slots from the backend
     const allSlots = [...available, ...booked].sort();
     
     if (allSlots.length === 0) {
@@ -191,7 +199,6 @@ function displayTimeSlots(available, booked) {
         return;
     }
     
-    // Check if the selected date is today
     const now = new Date();
     const isToday = selectedDate && 
                     selectedDate.getDate() === now.getDate() &&
@@ -205,21 +212,17 @@ function displayTimeSlots(available, booked) {
         slotElement.className = 'time-slot';
         slotElement.textContent = slot;
         
-        // Extract the hour as a number (e.g., "09:00" becomes 9)
         const slotHour = parseInt(slot.split(':')[0], 10);
         
         if (booked.includes(slot)) {
-            // Rule 1: It's already booked
             slotElement.classList.add('booked');
             slotElement.title = 'Already booked';
         } else if (isToday && slotHour <= currentHour) {
-            // Rule 2: It's today, and the time has already passed
             slotElement.classList.add('disabled'); 
             slotElement.title = 'Time has passed';
         } else {
-            // Rule 3: It's available! 
             slotElement.addEventListener('click', function() {
-                selectTimeSlot(slot, this); // Pass the element to handle CSS toggling
+                selectTimeSlot(slot, this); 
             });
         }
         
@@ -229,7 +232,6 @@ function displayTimeSlots(available, booked) {
     timeSlotsSection.classList.remove('hidden');
 }
 
-// Ensure selectTimeSlot handles the visual toggle correctly
 function selectTimeSlot(timeSlot, element) {
     const index = selectedTimeSlots.indexOf(timeSlot);
     
@@ -246,19 +248,16 @@ function selectTimeSlot(timeSlot, element) {
     if (selectedTimeSlots.length > 0) {
         showBookingForm();
     } else {
-        // Use the reset logic if they unselect everything
         hideBookingForm();
     }
 }
 
-// Show booking form
 function showBookingForm() {
     const bookingForm = document.getElementById('bookingForm');
     const bookingDate = document.getElementById('bookingDate');
     const bookingTime = document.getElementById('bookingTime');
     
     bookingDate.textContent = formatDate(selectedDate);
-    // Join the array so it looks nice: "14:00, 15:00"
     bookingTime.textContent = selectedTimeSlots.join(', '); 
     
     bookingForm.classList.remove('hidden');
@@ -273,25 +272,21 @@ function hideBookingForm() {
     bookingNotes.value = '';
     selectedTimeSlots = [];
     
-    // Remove blue highlights from time slots
     const highlightedSlots = document.querySelectorAll('.time-slot.selected-slot');
     highlightedSlots.forEach(slot => {
         slot.classList.remove('selected-slot');
     });
 
-    // NEW: Remove blue highlight from the calendar date
     const selectedCalendarDay = document.querySelector('.calendar-day.selected');
     if (selectedCalendarDay) {
         selectedCalendarDay.classList.remove('selected');
     }
     
-    // Hide the "Selected Date: ..." info bar
     document.getElementById('selectedDateInfo').classList.add('hidden');
-    // Hide the time slots section
     document.getElementById('timeSlotsSection').classList.add('hidden');
 }
 
-// Confirm booking
+// Confirm booking with Level support
 async function confirmBooking() {
     if (!selectedDate || selectedTimeSlots.length === 0) {
         showToast('Please select a date and at least one time slot', 'error');
@@ -315,8 +310,9 @@ async function confirmBooking() {
             },
             body: JSON.stringify({
                 telegramUser: telegramUser,
+                lounge_level: selectedLevel, // UPDATED: Send floor level
                 date: formatDateForAPI(selectedDate),
-                timeSlots: selectedTimeSlots, // Changed to array payload
+                timeSlots: selectedTimeSlots,
                 notes: notes
             })
         });
@@ -326,21 +322,18 @@ async function confirmBooking() {
             throw new Error(error.error || 'Failed to create booking');
         }
         
-        showToast('Booking confirmed successfully!', 'success');
+        showToast(`Level ${selectedLevel} booking confirmed!`, 'success');
         
-        // Reset selections AFTER a successful booking
         selectedTimeSlots = [];
         hideBookingForm();
         
-        // Reload time slots and bookings
         await loadTimeSlots(selectedDate);
         await loadMyBookings();
         
-        // Notify Telegram
         if (tg) {
             tg.showPopup({
                 title: 'Booking Confirmed',
-                message: `Your booking on ${formatDate(selectedDate)} has been confirmed.`,
+                message: `Your booking for Level ${selectedLevel} on ${formatDate(selectedDate)} has been confirmed.`,
                 buttons: [{type: 'ok'}]
             });
         }
@@ -370,10 +363,8 @@ async function loadMyBookings() {
     }
 }
 
-// Display user's bookings
 function displayMyBookings(bookings) {
     const myBookingsContainer = document.getElementById('myBookings');
-    
     myBookingsContainer.innerHTML = '';
     
     if (bookings.length === 0) {
@@ -381,12 +372,10 @@ function displayMyBookings(bookings) {
         return;
     }
     
-    // Filter future bookings and sort
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     const futureBookings = bookings.filter(booking => {
-        // Manually split the date to ensure it works on iPhones/Safari
         const [year, month, day] = booking.date.split('-');
         const bookingDate = new Date(year, month - 1, day);
         return bookingDate >= today;
@@ -404,13 +393,13 @@ function displayMyBookings(bookings) {
         const header = document.createElement('div');
         header.className = 'booking-card-header';
         
-        // Ensure display formatting also uses the iOS safe date
         const [year, month, day] = booking.date.split('-');
         const displayDate = new Date(year, month - 1, day);
         
         const date = document.createElement('div');
         date.className = 'booking-card-date';
-        date.textContent = formatDate(displayDate);
+        // UPDATED: Show Level in the booking card
+        date.textContent = `Level ${booking.lounge_level} - ${formatDate(displayDate)}`;
         
         const time = document.createElement('div');
         time.className = 'booking-card-time';
@@ -418,7 +407,6 @@ function displayMyBookings(bookings) {
         
         header.appendChild(date);
         header.appendChild(time);
-        
         card.appendChild(header);
         
         if (booking.notes) {
@@ -430,7 +418,6 @@ function displayMyBookings(bookings) {
         
         const actions = document.createElement('div');
         actions.className = 'booking-card-actions';
-        
         const cancelBtn = document.createElement('button');
         cancelBtn.className = 'btn btn-danger';
         cancelBtn.textContent = 'Cancel';
@@ -438,7 +425,6 @@ function displayMyBookings(bookings) {
         
         actions.appendChild(cancelBtn);
         card.appendChild(actions);
-        
         myBookingsContainer.appendChild(card);
     });
 }
@@ -474,7 +460,6 @@ async function cancelBooking(bookingId) {
         
         showToast('Booking cancelled successfully', 'success');
         
-        // Reload bookings and time slots if date is selected
         await loadMyBookings();
         if (selectedDate) {
             await loadTimeSlots(selectedDate);
@@ -487,7 +472,7 @@ async function cancelBooking(bookingId) {
     }
 }
 
-// Helper functions
+// Helpers
 function formatDate(date) {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     return date.toLocaleDateString('en-US', options);
@@ -495,20 +480,15 @@ function formatDate(date) {
 
 function formatDateForAPI(date) {
     const year = date.getFullYear();
-    // getMonth() is 0-indexed, so add 1. padStart ensures it's always 2 digits.
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    
     return `${year}-${month}-${day}`;
 }
 
 function showLoading(show) {
     const loading = document.getElementById('loading');
-    if (show) {
-        loading.classList.remove('hidden');
-    } else {
-        loading.classList.add('hidden');
-    }
+    if (show) loading.classList.remove('hidden');
+    else loading.classList.add('hidden');
 }
 
 function showToast(message, type = 'success') {
@@ -516,8 +496,5 @@ function showToast(message, type = 'success') {
     toast.textContent = message;
     toast.className = `toast ${type}`;
     toast.classList.remove('hidden');
-    
-    setTimeout(() => {
-        toast.classList.add('hidden');
-    }, 3000);
+    setTimeout(() => toast.classList.add('hidden'), 3000);
 }

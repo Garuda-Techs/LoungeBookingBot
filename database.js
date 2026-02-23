@@ -44,11 +44,12 @@ function initialize() {
           )
         `);
         
-        // Bookings table
+        // Bookings table - UPDATED with lounge_level
         db.run(`
           CREATE TABLE IF NOT EXISTS bookings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
+            lounge_level INTEGER NOT NULL,
             date TEXT NOT NULL,
             time_slot TEXT NOT NULL,
             status TEXT DEFAULT 'active',
@@ -58,16 +59,17 @@ function initialize() {
           )
         `);
         
-        // Create unique index for active bookings only
+        // Create unique index for active bookings only - UPDATED to include lounge_level
+        // This allows Level 9, 10, and 11 to have separate bookings at the same time.
         db.run(`
           CREATE UNIQUE INDEX IF NOT EXISTS idx_active_bookings 
-          ON bookings(date, time_slot) 
+          ON bookings(lounge_level, date, time_slot) 
           WHERE status = 'active'
         `, (err) => {
           if (err) {
             return reject(err);
           }
-          console.log('Database tables initialized');
+          console.log('Database tables initialized with floor levels');
           resolve();
         });
       });

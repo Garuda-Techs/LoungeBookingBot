@@ -10,28 +10,18 @@ async function getOrCreateUser(telegramUser) {
   return new Promise((resolve, reject) => {
     const database = db.getDb();
     
-    // Check if user exists
     database.get(
       'SELECT * FROM users WHERE telegram_id = ?',
       [telegramUser.id],
       (err, row) => {
-        if (err) {
-          return reject(err);
-        }
+        if (err) return reject(err);
+        if (row) return resolve(row);
         
-        if (row) {
-          return resolve(row);
-        }
-        
-        // Create new user
         database.run(
           'INSERT INTO users (telegram_id, telegram_username, first_name, last_name) VALUES (?, ?, ?, ?)',
           [telegramUser.id, telegramUser.username, telegramUser.first_name, telegramUser.last_name],
           function(err) {
-            if (err) {
-              return reject(err);
-            }
-            
+            if (err) return reject(err);
             resolve({
               id: this.lastID,
               telegram_id: telegramUser.id,
@@ -46,12 +36,12 @@ async function getOrCreateUser(telegramUser) {
   });
 }
 
-// Get available time slots for a date
+// Get available time slots for a specific date AND level
 router.get('/available/:date', async (req, res) => {
   try {
     const { date } = req.params;
+    const level = parseInt(req.query.level) || 9; // Default to Level 9 if not specified
     
-    // Validate date format
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(date)) {
       return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
@@ -59,21 +49,21 @@ router.get('/available/:date', async (req, res) => {
     
     const database = db.getDb();
     
-    // Get booked slots for the date
+    // Get booked slots for the date and specific lounge level
     database.all(
-      'SELECT time_slot FROM bookings WHERE date = ? AND status = ?',
-      [date, 'active'],
+      'SELECT time_slot FROM bookings WHERE date = ? AND lounge_level = ? AND status = ?',
+      [date, level, 'active'],
       (err, rows) => {
         if (err) {
           return res.status(500).json({ error: 'Database error' });
         }
         
         const bookedSlots = rows.map(row => row.time_slot);
-        // Compare against our new 24-hour list
         const availableSlots = ALL_TIME_SLOTS.filter(slot => !bookedSlots.includes(slot));
         
         res.json({
           date,
+          lounge_level: level,
           available: availableSlots,
           booked: bookedSlots
         });
@@ -84,30 +74,25 @@ router.get('/available/:date', async (req, res) => {
   }
 });
 
-// Create a new multi-slot booking
+// Create a new multi-slot booking for a specific level
 router.post('/', async (req, res) => {
   try {
-    const { telegramUser, date, timeSlots, notes } = req.body; 
+    const { telegramUser, date, timeSlots, notes, lounge_level } = req.body; 
     
-    // Validate required fields
-    if (!telegramUser) {
-      return res.status(400).json({ error: 'Missing telegramUser' });
+    const level = parseInt(lounge_level);
+    if (![9, 10, 11].includes(level)) {
+      return res.status(400).json({ error: 'Invalid lounge level. Choose 9, 10, or 11.' });
     }
-    if (!date) {
-      return res.status(400).json({ error: 'Missing date' });
-    }
-    // Check that timeSlots exists, is an array, and has at least one item
-    if (!timeSlots || !Array.isArray(timeSlots) || timeSlots.length === 0) {
-      return res.status(400).json({ error: 'Missing or invalid time slots' });
+
+    if (!telegramUser || !date || !timeSlots || !Array.isArray(timeSlots) || timeSlots.length === 0) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
     
-    // Validate date format (YYYY-MM-DD)
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(date)) {
-      return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+      return res.status(400).json({ error: 'Invalid date format.' });
     }
     
-    // Validate date is not in the past
     const bookingDate = new Date(date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -115,54 +100,34 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Cannot book dates in the past' });
     }
     
-    // Validate ALL requested time slots format and availability
-    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    for (const slot of timeSlots) {
-        if (!timeRegex.test(slot) || !ALL_TIME_SLOTS.includes(slot)) {
-            return res.status(400).json({ error: `Invalid or unavailable time slot: ${slot}` });
-        }
-    }
-    
-    // Validate notes length
-    if (notes && notes.length > 500) {
-      return res.status(400).json({ error: 'Notes must be 500 characters or less' });
-    }
-    
-    // Get or create user
     const user = await getOrCreateUser(telegramUser);
-    
     const database = db.getDb();
     
-    // Check if ANY of the requested slots were just booked by someone else
+    // Conflict check including the floor level
     const placeholders = timeSlots.map(() => '?').join(',');
     database.get(
-        `SELECT COUNT(*) as count FROM bookings WHERE date = ? AND status = 'active' AND time_slot IN (${placeholders})`,
-        [date, ...timeSlots],
+        `SELECT COUNT(*) as count FROM bookings WHERE date = ? AND lounge_level = ? AND status = 'active' AND time_slot IN (${placeholders})`,
+        [date, level, ...timeSlots],
         (err, conflictRow) => {
-            if (err) {
-                return res.status(500).json({ error: 'Database error checking conflicts' });
-            }
+            if (err) return res.status(500).json({ error: 'Database error' });
             
             if (conflictRow && conflictRow.count > 0) {
-                return res.status(409).json({ error: 'One or more selected slots were just booked by someone else!' });
+                return res.status(409).json({ error: 'One or more slots on this floor are already booked!' });
             }
 
-            // Bulk Insert all slots into the database
-            const insertPlaceholders = timeSlots.map(() => '(?, ?, ?, ?, ?)').join(',');
+            // Insert bookings with the lounge_level column
+            const insertPlaceholders = timeSlots.map(() => '(?, ?, ?, ?, ?, ?)').join(',');
             const insertValues = [];
             timeSlots.forEach(slot => {
-                insertValues.push(user.id, date, slot, notes, 'active');
+                insertValues.push(user.id, level, date, slot, notes, 'active');
             });
 
             database.run(
-                `INSERT INTO bookings (user_id, date, time_slot, notes, status) VALUES ${insertPlaceholders}`,
+                `INSERT INTO bookings (user_id, lounge_level, date, time_slot, notes, status) VALUES ${insertPlaceholders}`,
                 insertValues,
                 function(err) {
-                    if (err) {
-                        return res.status(500).json({ error: 'Failed to create multi-hour booking' });
-                    }
-                    
-                    res.status(201).json({ message: 'Bookings created successfully', status: 'active' });
+                    if (err) return res.status(500).json({ error: 'Failed to create booking' });
+                    res.status(201).json({ message: 'Bookings created successfully', level: level });
                 }
             );
         }
@@ -172,7 +137,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Get user's bookings
+// Get user's bookings (displays all levels)
 router.get('/user/:telegramId', async (req, res) => {
   try {
     const { telegramId } = req.params;
@@ -185,10 +150,7 @@ router.get('/user/:telegramId', async (req, res) => {
        ORDER BY b.date, b.time_slot`,
       [telegramId, 'active'],
       (err, rows) => {
-        if (err) {
-          return res.status(500).json({ error: 'Database error' });
-        }
-        
+        if (err) return res.status(500).json({ error: 'Database error' });
         res.json(rows);
       }
     );
@@ -202,27 +164,15 @@ router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { telegramId } = req.body;
-    
-    if (!telegramId) {
-      return res.status(400).json({ error: 'Missing telegram ID' });
-    }
-    
     const database = db.getDb();
     
-    // Verify ownership and cancel
     database.run(
       `UPDATE bookings SET status = 'cancelled' 
        WHERE id = ? AND user_id IN (SELECT id FROM users WHERE telegram_id = ?)`,
       [id, telegramId],
       function(err) {
-        if (err) {
-          return res.status(500).json({ error: 'Database error' });
-        }
-        
-        if (this.changes === 0) {
-          return res.status(404).json({ error: 'Booking not found or unauthorized' });
-        }
-        
+        if (err) return res.status(500).json({ error: 'Database error' });
+        if (this.changes === 0) return res.status(404).json({ error: 'Booking not found' });
         res.json({ message: 'Booking cancelled successfully' });
       }
     );
