@@ -1,13 +1,11 @@
 :root {
-    --primary-color: #f1c40f;    /* Golden Yellow */
-    --secondary-color: #f39c12;  /* Slightly darker yellow/orange for hover */
+    --primary-color: #f1c40f;    /* Golden Garuda Yellow */
+    --secondary-color: #f39c12;  /* Hover state yellow */
     --success-color: #27ae60;
     --danger-color: #e74c3c;
-    --warning-color: #f39c12;
     --bg-color: #ffffff;
-    --text-color: #2c3e50;       /* Darker text for better contrast on yellow */
+    --text-color: #000000;       /* Keep text strictly black */
     --border-color: #e2e8f0;
-    --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 * {
