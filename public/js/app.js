@@ -229,27 +229,24 @@ function displayTimeSlots(available, booked) {
     timeSlotsSection.classList.remove('hidden');
 }
 
-// Select a time slot (Now handles multiple!)
+// Ensure selectTimeSlot handles the visual toggle correctly
 function selectTimeSlot(timeSlot, element) {
     const index = selectedTimeSlots.indexOf(timeSlot);
     
     if (index > -1) {
-        // If already selected, remove it and remove the blue color
         selectedTimeSlots.splice(index, 1);
         element.classList.remove('selected-slot');
     } else {
-        // If not selected, add it to array and make it blue
         selectedTimeSlots.push(timeSlot);
         element.classList.add('selected-slot');
     }
     
-    // Sort chronologically
     selectedTimeSlots.sort();
     
-    // Show form if they have at least 1 slot, hide if 0
     if (selectedTimeSlots.length > 0) {
         showBookingForm();
     } else {
+        // Use the reset logic if they unselect everything
         hideBookingForm();
     }
 }
@@ -268,16 +265,30 @@ function showBookingForm() {
     bookingForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-// Hide booking form
 function hideBookingForm() {
     const bookingForm = document.getElementById('bookingForm');
     const bookingNotes = document.getElementById('bookingNotes');
     
     bookingForm.classList.add('hidden');
     bookingNotes.value = '';
+    selectedTimeSlots = [];
     
-    // We do NOT clear selectedTimeSlots array here because they might just be cancelling the notes input
-    // and want to keep their slots highlighted. The array is cleared in selectDate().
+    // Remove blue highlights from time slots
+    const highlightedSlots = document.querySelectorAll('.time-slot.selected-slot');
+    highlightedSlots.forEach(slot => {
+        slot.classList.remove('selected-slot');
+    });
+
+    // NEW: Remove blue highlight from the calendar date
+    const selectedCalendarDay = document.querySelector('.calendar-day.selected');
+    if (selectedCalendarDay) {
+        selectedCalendarDay.classList.remove('selected');
+    }
+    
+    // Hide the "Selected Date: ..." info bar
+    document.getElementById('selectedDateInfo').classList.add('hidden');
+    // Hide the time slots section
+    document.getElementById('timeSlotsSection').classList.add('hidden');
 }
 
 // Confirm booking
