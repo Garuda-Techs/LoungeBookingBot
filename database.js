@@ -2,7 +2,11 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'lounge_bookings.db');
+// Check if we are running in the cloud (Railway usually sets a PORT variable)
+const isRailway = process.env.PORT || process.env.RAILWAY_ENVIRONMENT;
+
+// Use environment variable if set. If on Railway, use the protected Volume. Otherwise, use local file.
+const DB_PATH = process.env.DB_PATH || (isRailway ? '/app/data/lounge_bookings.db' : path.join(__dirname, 'lounge_bookings.db'));
 
 // Ensure the directory for the database exists
 const dbDir = path.dirname(DB_PATH);

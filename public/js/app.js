@@ -5,7 +5,7 @@ let telegramUser = null;
 // State
 let currentDate = new Date();
 let selectedDate = null;
-let selectedTimeSlot = null;
+let selectedTimeSlots = []; // Changed to array for multiple selections
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
@@ -137,7 +137,7 @@ function renderCalendar() {
 // Select a date
 async function selectDate(date) {
     selectedDate = date;
-    selectedTimeSlot = null;
+    selectedTimeSlots = []; // Reset array when new date is clicked
     
     renderCalendar();
     
@@ -183,35 +183,75 @@ function displayTimeSlots(available, booked) {
     
     timeSlotsContainer.innerHTML = '';
     
-    // Combine available and booked slots
+    // Combine available and booked slots from the backend
     const allSlots = [...available, ...booked].sort();
     
     if (allSlots.length === 0) {
         timeSlotsContainer.innerHTML = '<p class="empty-message">No time slots available</p>';
-    } else {
-        allSlots.forEach(slot => {
-            const slotElement = document.createElement('div');
-            slotElement.className = 'time-slot';
-            slotElement.textContent = slot;
-            
-            if (booked.includes(slot)) {
-                slotElement.classList.add('booked');
-                slotElement.title = 'Already booked';
-            } else {
-                slotElement.addEventListener('click', () => selectTimeSlot(slot));
-            }
-            
-            timeSlotsContainer.appendChild(slotElement);
-        });
+        return;
     }
+    
+    // Check if the selected date is today
+    const now = new Date();
+    const isToday = selectedDate && 
+                    selectedDate.getDate() === now.getDate() &&
+                    selectedDate.getMonth() === now.getMonth() &&
+                    selectedDate.getFullYear() === now.getFullYear();
+                    
+    const currentHour = now.getHours();
+
+    allSlots.forEach(slot => {
+        const slotElement = document.createElement('div');
+        slotElement.className = 'time-slot';
+        slotElement.textContent = slot;
+        
+        // Extract the hour as a number (e.g., "09:00" becomes 9)
+        const slotHour = parseInt(slot.split(':')[0], 10);
+        
+        if (booked.includes(slot)) {
+            // Rule 1: It's already booked
+            slotElement.classList.add('booked');
+            slotElement.title = 'Already booked';
+        } else if (isToday && slotHour <= currentHour) {
+            // Rule 2: It's today, and the time has already passed
+            slotElement.classList.add('disabled'); 
+            slotElement.title = 'Time has passed';
+        } else {
+            // Rule 3: It's available! 
+            slotElement.addEventListener('click', function() {
+                selectTimeSlot(slot, this); // Pass the element to handle CSS toggling
+            });
+        }
+        
+        timeSlotsContainer.appendChild(slotElement);
+    });
     
     timeSlotsSection.classList.remove('hidden');
 }
 
-// Select a time slot
-function selectTimeSlot(timeSlot) {
-    selectedTimeSlot = timeSlot;
-    showBookingForm();
+// Select a time slot (Now handles multiple!)
+function selectTimeSlot(timeSlot, element) {
+    const index = selectedTimeSlots.indexOf(timeSlot);
+    
+    if (index > -1) {
+        // If already selected, remove it and remove the blue color
+        selectedTimeSlots.splice(index, 1);
+        element.classList.remove('selected-slot');
+    } else {
+        // If not selected, add it to array and make it blue
+        selectedTimeSlots.push(timeSlot);
+        element.classList.add('selected-slot');
+    }
+    
+    // Sort chronologically
+    selectedTimeSlots.sort();
+    
+    // Show form if they have at least 1 slot, hide if 0
+    if (selectedTimeSlots.length > 0) {
+        showBookingForm();
+    } else {
+        hideBookingForm();
+    }
 }
 
 // Show booking form
@@ -221,7 +261,8 @@ function showBookingForm() {
     const bookingTime = document.getElementById('bookingTime');
     
     bookingDate.textContent = formatDate(selectedDate);
-    bookingTime.textContent = selectedTimeSlot;
+    // Join the array so it looks nice: "14:00, 15:00"
+    bookingTime.textContent = selectedTimeSlots.join(', '); 
     
     bookingForm.classList.remove('hidden');
     bookingForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -234,12 +275,15 @@ function hideBookingForm() {
     
     bookingForm.classList.add('hidden');
     bookingNotes.value = '';
+    
+    // We do NOT clear selectedTimeSlots array here because they might just be cancelling the notes input
+    // and want to keep their slots highlighted. The array is cleared in selectDate().
 }
 
 // Confirm booking
 async function confirmBooking() {
-    if (!selectedDate || !selectedTimeSlot) {
-        showToast('Please select a date and time slot', 'error');
+    if (!selectedDate || selectedTimeSlots.length === 0) {
+        showToast('Please select a date and at least one time slot', 'error');
         return;
     }
     
@@ -261,7 +305,7 @@ async function confirmBooking() {
             body: JSON.stringify({
                 telegramUser: telegramUser,
                 date: formatDateForAPI(selectedDate),
-                timeSlot: selectedTimeSlot,
+                timeSlots: selectedTimeSlots, // Changed to array payload
                 notes: notes
             })
         });
@@ -272,6 +316,9 @@ async function confirmBooking() {
         }
         
         showToast('Booking confirmed successfully!', 'success');
+        
+        // Reset selections AFTER a successful booking
+        selectedTimeSlots = [];
         hideBookingForm();
         
         // Reload time slots and bookings
@@ -282,7 +329,7 @@ async function confirmBooking() {
         if (tg) {
             tg.showPopup({
                 title: 'Booking Confirmed',
-                message: `Your booking for ${formatDate(selectedDate)} at ${selectedTimeSlot} has been confirmed.`,
+                message: `Your booking on ${formatDate(selectedDate)} has been confirmed.`,
                 buttons: [{type: 'ok'}]
             });
         }
@@ -383,58 +430,6 @@ function displayMyBookings(bookings) {
         
         myBookingsContainer.appendChild(card);
     });
-}
-
-// Display time slots
-function displayTimeSlots(available, booked) {
-    const timeSlotsSection = document.getElementById('timeSlotsSection');
-    const timeSlotsContainer = document.getElementById('timeSlots');
-    
-    timeSlotsContainer.innerHTML = '';
-    
-    // Combine available and booked slots from the backend
-    const allSlots = [...available, ...booked].sort();
-    
-    if (allSlots.length === 0) {
-        timeSlotsContainer.innerHTML = '<p class="empty-message">No time slots available</p>';
-        return;
-    }
-    
-    // Check if the selected date is today
-    const now = new Date();
-    const isToday = selectedDate && 
-                    selectedDate.getDate() === now.getDate() &&
-                    selectedDate.getMonth() === now.getMonth() &&
-                    selectedDate.getFullYear() === now.getFullYear();
-                    
-    const currentHour = now.getHours();
-
-    allSlots.forEach(slot => {
-        const slotElement = document.createElement('div');
-        slotElement.className = 'time-slot';
-        slotElement.textContent = slot;
-        
-        // Extract the hour as a number (e.g., "09:00" becomes 9)
-        const slotHour = parseInt(slot.split(':')[0], 10);
-        
-        if (booked.includes(slot)) {
-            // Rule 1: It's already booked
-            slotElement.classList.add('booked');
-            slotElement.title = 'Already booked';
-        } else if (isToday && slotHour <= currentHour) {
-            // Rule 2: It's today, and the time has already passed
-            // (Uses the same 'disabled' class you use for past calendar days)
-            slotElement.classList.add('disabled'); 
-            slotElement.title = 'Time has passed';
-        } else {
-            // Rule 3: It's available!
-            slotElement.addEventListener('click', () => selectTimeSlot(slot));
-        }
-        
-        timeSlotsContainer.appendChild(slotElement);
-    });
-    
-    timeSlotsSection.classList.remove('hidden');
 }
 
 // Cancel booking
