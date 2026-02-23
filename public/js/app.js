@@ -2,6 +2,8 @@
 let tg = window.Telegram?.WebApp;
 let telegramUser = null;
 
+const ALL_TIME_SLOTS = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
+
 // State
 let currentDate = new Date();
 let selectedDate = null;
@@ -450,10 +452,11 @@ function formatDate(date) {
 }
 
 function formatDateForAPI(date) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 function showLoading(show) {
