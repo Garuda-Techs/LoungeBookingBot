@@ -192,22 +192,28 @@ function displayTimeSlots(available, bookedDetails) {
     const timeSlotsContainer = document.getElementById('timeSlots');
     timeSlotsContainer.innerHTML = '';
 
-    // Create a Map to store the objects by their time
     const bookedMap = new Map();
     if (bookedDetails && Array.isArray(bookedDetails)) {
-        bookedDetails.forEach(booking => {
-            bookedMap.set(booking.time_slot, booking);
-        });
+        bookedDetails.forEach(booking => bookedMap.set(booking.time_slot, booking));
     }
 
-    // Combine both lists to show all 24 slots
+    const now = new Date();
+    const isToday = selectedDate &&
+        selectedDate.toDateString() === now.toDateString();
+
     ALL_TIME_SLOTS.forEach(slot => {
         const slotElement = document.createElement('div');
         slotElement.className = 'time-slot';
         slotElement.textContent = slot;
 
+        // convert slot string to a time for comparison
+        const [h] = slot.split(':').map(Number);
+        const slotTime = new Date(selectedDate);
+        slotTime.setHours(h, 0, 0, 0);
+
+        const isPastSlot = isToday && slotTime <= now;
+
         if (bookedMap.has(slot)) {
-            // This is the "Notes" part: make it clickable for info but not for booking
             const detail = bookedMap.get(slot);
             slotElement.classList.add('booked');
             slotElement.onclick = () => {
@@ -215,12 +221,15 @@ function displayTimeSlots(available, bookedDetails) {
                 if (window.Telegram?.WebApp) window.Telegram.WebApp.showAlert(info);
                 else alert(info);
             };
+        } else if (isPastSlot) {
+            // grey out past time slots
+            slotElement.classList.add('disabled');
         } else {
-            // Standard available slot selection
             slotElement.onclick = function() {
-                selectTimeSlot(slot, this); 
+                selectTimeSlot(slot, this);
             };
         }
+
         timeSlotsContainer.appendChild(slotElement);
     });
 }
@@ -250,14 +259,15 @@ function showBookingForm() {
     const bookingDate = document.getElementById('bookingDate');
     const bookingTime = document.getElementById('bookingTime');
     const confirmLevel = document.getElementById('confirmLevel'); 
-    
-    if (confirmLevel) {
-        confirmLevel.textContent = selectedLevel;
-    }
-    
+    const bookingNotes = document.getElementById('bookingNotes');
+
+    bookingNotes.disabled = false; // ensure it’s editable again
+    bookingNotes.value = ''; // reset safely each time
+
+    if (confirmLevel) confirmLevel.textContent = selectedLevel;
     bookingDate.textContent = formatDate(selectedDate);
     bookingTime.textContent = selectedTimeSlots.join(', '); 
-    
+
     bookingForm.classList.remove('hidden');
     bookingForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -265,14 +275,13 @@ function showBookingForm() {
 function hideBookingForm() {
     const bookingForm = document.getElementById('bookingForm');
     const bookingNotes = document.getElementById('bookingNotes');
-    
+
     bookingForm.classList.add('hidden');
-    bookingNotes.value = '';
+    bookingNotes.disabled = false; // re-enable if Telegram input froze
+    bookingNotes.value = ''; // always clear
+
     selectedTimeSlots = [];
-    
-    document.querySelectorAll('.time-slot.selected-slot').forEach(slot => {
-        slot.classList.remove('selected-slot');
-    });
+    document.querySelectorAll('.time-slot.selected-slot').forEach(slot => slot.classList.remove('selected-slot'));
 }
 
 async function confirmBooking() {
