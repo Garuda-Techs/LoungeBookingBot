@@ -41,6 +41,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Update State
             selectedLevel = parseInt(this.dataset.level);
+
+            // THE FIX: Immediately update the confirmation text too
+            const confirmLevel = document.getElementById('confirmLevel');
+            if (confirmLevel) {
+                confirmLevel.textContent = selectedLevel; 
+            }
             
             // CRITICAL: Reset selections so old floor timings don't "ghost" back
             selectedTimeSlots = []; 
@@ -52,7 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     });
-    
+
     // Initialize calendar
     renderCalendar();
     
