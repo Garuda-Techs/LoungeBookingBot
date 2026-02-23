@@ -163,16 +163,31 @@ router.get('/user/:telegramId', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    // Ensure telegramId is being pulled from the body
     const { telegramId } = req.body;
+
+    if (!telegramId) {
+      return res.status(400).json({ error: 'User authorization (telegramId) is required to cancel.' });
+    }
+
     const database = db.getDb();
     
+    // Using a subquery to verify the user owns the booking before 'deleting' (updating status)
     database.run(
       `UPDATE bookings SET status = 'cancelled' 
        WHERE id = ? AND user_id IN (SELECT id FROM users WHERE telegram_id = ?)`,
       [id, telegramId],
       function(err) {
-        if (err) return res.status(500).json({ error: 'Database error' });
-        if (this.changes === 0) return res.status(404).json({ error: 'Booking not found' });
+        if (err) {
+          console.error('Database error during cancellation:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        
+        // If this.changes is 0, it means the ID didn't exist OR the user didn't own it
+        if (this.changes === 0) {
+          return res.status(404).json({ error: 'Booking not found or unauthorized.' });
+        }
+        
         res.json({ message: 'Booking cancelled successfully' });
       }
     );

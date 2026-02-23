@@ -9,7 +9,6 @@ const db = require('./database');
 const bookingRoutes = require('./routes/bookings');
 
 // Initialize Telegram Bot
-// This ensures the bot runs in the same process as the server
 try {
   require('./bot');
   console.log('Telegram bot initialized');
@@ -20,17 +19,20 @@ try {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// --- THE FIX FOR CANCELLING RESPONSIVENESS ---
+// Tell Express to trust Railway's proxy headers so rateLimit works correctly
+app.set('trust proxy', 1); 
+
 // Rate limiting configuration
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 100, 
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 // Middleware
-// Configure CORS for production security
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
     ? [process.env.WEB_APP_URL] 

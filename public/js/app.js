@@ -6,7 +6,7 @@ let telegramUser = null;
 let currentDate = new Date();
 let selectedDate = null;
 let selectedTimeSlots = []; 
-let selectedLevel = 9; // NEW: Track which floor is selected (9, 10, or 11)
+let selectedLevel = 9; // Default floor
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
@@ -32,23 +32,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         displayUserInfo();
     }
     
-    // --- 1. Corrected Level Switcher (Inside DOMContentLoaded) ---
+    // --- 1. Level Switcher Logic ---
     document.querySelectorAll('.level-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            // Update UI
+            // Update UI Active State
             document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             
             // Update State
             selectedLevel = parseInt(this.dataset.level);
 
-            // THE FIX: Immediately update the confirmation text too
+            // SYNC UI: Immediately update the confirmation text floor
             const confirmLevel = document.getElementById('confirmLevel');
             if (confirmLevel) {
                 confirmLevel.textContent = selectedLevel; 
             }
             
-            // CRITICAL: Reset selections so old floor timings don't "ghost" back
+            // Reset selections to avoid "ghost" bookings from other floors
             selectedTimeSlots = []; 
             hideBookingForm(); 
 
@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load user's bookings
     await loadMyBookings();
     
-    // Event listeners
+    // Global Event listeners
     document.getElementById('prevMonth').addEventListener('click', () => {
         currentDate.setMonth(currentDate.getMonth() - 1);
         renderCalendar();
@@ -134,20 +134,14 @@ function renderCalendar() {
         const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
         dateObj.setHours(0, 0, 0, 0);
         
-        // Disable past dates
         if (dateObj < today) {
             dayElement.classList.add('disabled');
         } else {
             dayElement.addEventListener('click', () => selectDate(dateObj));
         }
         
-        // THE FIX: Precise comparison to highlight the selected date
-        if (selectedDate) {
-            const isSelected = dateObj.getTime() === selectedDate.getTime();
-            if (isSelected) {
-                console.log("Highlighting day:", day); // Check your console to verify
-                dayElement.classList.add('selected');
-            }
+        if (selectedDate && dateObj.getTime() === selectedDate.getTime()) {
+            dayElement.classList.add('selected');
         }
         
         calendar.appendChild(dayElement);
@@ -156,26 +150,20 @@ function renderCalendar() {
 
 async function selectDate(date) {
     selectedDate = new Date(date);
-    selectedDate.setHours(0, 0, 0, 0); // Normalize for getTime() comparison
+    selectedDate.setHours(0, 0, 0, 0); 
     selectedTimeSlots = []; 
     
-    // 1. Hide the old booking form first
     hideBookingForm(); 
-    
-    // 2. NOW draw the calendar (this applies the yellow highlight)
     renderCalendar();
     
-    // 3. Update the text and reveal sections
     document.getElementById('selectedDateInfo').classList.remove('hidden');
     document.getElementById('selectedDate').textContent = formatDate(date);
     document.getElementById('timeSlots').innerHTML = '<p class="empty-message">Loading timings...</p>'; 
     document.getElementById('timeSlotsSection').classList.remove('hidden'); 
     
-    // 4. Load the data
     await loadTimeSlots(date);
 }
 
-// 2. Update loadTimeSlots to ensure visibility after data arrives
 async function loadTimeSlots(date) {
     showLoading(true);
     try {
@@ -187,7 +175,6 @@ async function loadTimeSlots(date) {
         const data = await response.json();
         displayTimeSlots(data.available, data.booked);
         
-        // Final safety check to show the section
         document.getElementById('timeSlotsSection').classList.remove('hidden'); 
     } catch (error) {
         console.error('Error:', error);
@@ -197,7 +184,6 @@ async function loadTimeSlots(date) {
     }
 }
 
-// 2. Updated displayTimeSlots
 function displayTimeSlots(available, booked) {
     const timeSlotsSection = document.getElementById('timeSlotsSection');
     const timeSlotsContainer = document.getElementById('timeSlots');
@@ -235,7 +221,6 @@ function displayTimeSlots(available, booked) {
         timeSlotsContainer.appendChild(slotElement);
     });
     
-    // FINAL SAFETY: Ensure the section is visible after buttons are built
     timeSlotsSection.classList.remove('hidden');
 }
 
@@ -263,11 +248,10 @@ function showBookingForm() {
     const bookingForm = document.getElementById('bookingForm');
     const bookingDate = document.getElementById('bookingDate');
     const bookingTime = document.getElementById('bookingTime');
-    // Add this line to target the lounge level display
-    const bookingLounge = document.getElementById('bookingLounge'); 
+    const confirmLevel = document.getElementById('confirmLevel'); 
     
-    if (bookingLounge) {
-        bookingLounge.textContent = `Level ${selectedLevel}`;
+    if (confirmLevel) {
+        confirmLevel.textContent = selectedLevel;
     }
     
     bookingDate.textContent = formatDate(selectedDate);
@@ -280,30 +264,19 @@ function showBookingForm() {
 function hideBookingForm() {
     const bookingForm = document.getElementById('bookingForm');
     const bookingNotes = document.getElementById('bookingNotes');
-    const bookingTime = document.getElementById('bookingTime');
     
     bookingForm.classList.add('hidden');
     bookingNotes.value = '';
-    bookingTime.textContent = ''; 
     selectedTimeSlots = [];
     
-    const highlightedSlots = document.querySelectorAll('.time-slot.selected-slot');
-    highlightedSlots.forEach(slot => {
+    document.querySelectorAll('.time-slot.selected-slot').forEach(slot => {
         slot.classList.remove('selected-slot');
     });
-
-    // REMOVE OR COMMENT OUT THIS PART BELOW:
-    /* const selectedCalendarDay = document.querySelector('.calendar-day.selected');
-    if (selectedCalendarDay) {
-        selectedCalendarDay.classList.remove('selected');
-    }
-    */
 }
 
-// Confirm booking with Level support
 async function confirmBooking() {
     if (!selectedDate || selectedTimeSlots.length === 0) {
-        showToast('Please select a date and at least one time slot', 'error');
+        showToast('Please select a date and time slot', 'error');
         return;
     }
     
@@ -316,15 +289,12 @@ async function confirmBooking() {
     
     try {
         const notes = document.getElementById('bookingNotes').value;
-        
         const response = await fetch('/api/bookings', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 telegramUser: telegramUser,
-                lounge_level: selectedLevel, // UPDATED: Send floor level
+                lounge_level: selectedLevel,
                 date: formatDateForAPI(selectedDate),
                 timeSlots: selectedTimeSlots,
                 notes: notes
@@ -347,56 +317,49 @@ async function confirmBooking() {
         if (tg) {
             tg.showPopup({
                 title: 'Booking Confirmed',
-                message: `Your booking for Level ${selectedLevel} on ${formatDate(selectedDate)} has been confirmed.`,
+                message: `Confirmed for Level ${selectedLevel} on ${formatDate(selectedDate)}.`,
                 buttons: [{type: 'ok'}]
             });
         }
     } catch (error) {
-        console.error('Error creating booking:', error);
+        console.error('Error:', error);
         showToast(error.message, 'error');
     } finally {
         showLoading(false);
     }
 }
 
-// Load user's bookings
 async function loadMyBookings() {
     if (!telegramUser) return;
-    
     try {
         const response = await fetch(`/api/bookings/user/${telegramUser.id}`);
-        
-        if (!response.ok) {
-            throw new Error('Failed to load bookings');
-        }
-        
+        if (!response.ok) throw new Error('Failed to load');
         const bookings = await response.json();
         displayMyBookings(bookings);
     } catch (error) {
-        console.error('Error loading bookings:', error);
+        console.error('Error:', error);
     }
 }
 
 function displayMyBookings(bookings) {
-    const myBookingsContainer = document.getElementById('myBookings');
-    myBookingsContainer.innerHTML = '';
+    const container = document.getElementById('myBookings');
+    container.innerHTML = '';
     
     if (bookings.length === 0) {
-        myBookingsContainer.innerHTML = '<p class="empty-message">No bookings yet</p>';
+        container.innerHTML = '<p class="empty-message">No bookings yet</p>';
         return;
     }
     
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setHours(0,0,0,0);
     
-    const futureBookings = bookings.filter(booking => {
-        const [year, month, day] = booking.date.split('-');
-        const bookingDate = new Date(year, month - 1, day);
-        return bookingDate >= today;
+    const futureBookings = bookings.filter(b => {
+        const [y, m, d] = b.date.split('-');
+        return new Date(y, m-1, d) >= today;
     });
     
     if (futureBookings.length === 0) {
-        myBookingsContainer.innerHTML = '<p class="empty-message">No upcoming bookings</p>';
+        container.innerHTML = '<p class="empty-message">No upcoming bookings</p>';
         return;
     }
     
@@ -407,79 +370,68 @@ function displayMyBookings(bookings) {
         const header = document.createElement('div');
         header.className = 'booking-card-header';
         
-        const [year, month, day] = booking.date.split('-');
-        const displayDate = new Date(year, month - 1, day);
+        const [y, m, d] = booking.date.split('-');
+        const dateStr = formatDate(new Date(y, m-1, d));
         
-        const date = document.createElement('div');
-        date.className = 'booking-card-date';
-        // UPDATED: Show Level in the booking card
-        date.textContent = `Level ${booking.lounge_level} - ${formatDate(displayDate)}`;
+        const dateEl = document.createElement('div');
+        dateEl.className = 'booking-card-date';
+        dateEl.textContent = `Level ${booking.lounge_level} - ${dateStr}`;
         
-        const time = document.createElement('div');
-        time.className = 'booking-card-time';
-        time.textContent = booking.time_slot;
+        const timeEl = document.createElement('div');
+        timeEl.className = 'booking-card-time';
+        timeEl.textContent = booking.time_slot;
         
-        header.appendChild(date);
-        header.appendChild(time);
+        header.appendChild(dateEl);
+        header.appendChild(timeEl);
         card.appendChild(header);
         
         if (booking.notes) {
-            const notes = document.createElement('div');
-            notes.className = 'booking-card-notes';
-            notes.textContent = booking.notes;
-            card.appendChild(notes);
+            const notesEl = document.createElement('div');
+            notesEl.className = 'booking-card-notes';
+            notesEl.textContent = booking.notes;
+            card.appendChild(notesEl);
         }
         
         const actions = document.createElement('div');
         actions.className = 'booking-card-actions';
-        const cancelBtn = document.createElement('button');
-        cancelBtn.className = 'btn btn-danger';
-        cancelBtn.textContent = 'Cancel';
-        cancelBtn.addEventListener('click', () => cancelBooking(booking.id));
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn btn-danger';
+        delBtn.textContent = 'Cancel';
+        // Renamed function call to avoid conflict
+        delBtn.addEventListener('click', () => handleDeleteBooking(booking.id));
         
-        actions.appendChild(cancelBtn);
+        actions.appendChild(delBtn);
         card.appendChild(actions);
-        myBookingsContainer.appendChild(card);
+        container.appendChild(card);
     });
 }
 
-// Cancel booking
-async function cancelBooking(bookingId) {
+// Renamed to avoid name collision with form cancel button
+async function handleDeleteBooking(bookingId) {
     if (!telegramUser) {
-        showToast('User information not available', 'error');
+        showToast('User info missing', 'error');
         return;
     }
     
-    if (!confirm('Are you sure you want to cancel this booking?')) {
-        return;
-    }
+    if (!confirm('Are you sure you want to cancel this booking?')) return;
     
     showLoading(true);
-    
     try {
         const response = await fetch(`/api/bookings/${bookingId}`, {
             method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                telegramId: telegramUser.id
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ telegramId: telegramUser.id })
         });
         
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.error || 'Failed to cancel booking');
+            throw new Error(error.error || 'Failed to cancel');
         }
         
-        showToast('Booking cancelled successfully', 'success');
-        
+        showToast('Booking cancelled', 'success');
         await loadMyBookings();
-        if (selectedDate) {
-            await loadTimeSlots(selectedDate);
-        }
+        if (selectedDate) await loadTimeSlots(selectedDate);
     } catch (error) {
-        console.error('Error cancelling booking:', error);
         showToast(error.message, 'error');
     } finally {
         showLoading(false);
@@ -488,21 +440,19 @@ async function cancelBooking(bookingId) {
 
 // Helpers
 function formatDate(date) {
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    return date.toLocaleDateString('en-US', options);
+    return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 function formatDateForAPI(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
 }
 
 function showLoading(show) {
-    const loading = document.getElementById('loading');
-    if (show) loading.classList.remove('hidden');
-    else loading.classList.add('hidden');
+    const el = document.getElementById('loading');
+    if (show) el.classList.remove('hidden'); else el.classList.add('hidden');
 }
 
 function showToast(message, type = 'success') {
