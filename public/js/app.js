@@ -146,48 +146,39 @@ function renderCalendar() {
     }
 }
 
-// --- 2. Corrected selectDate Function ---
+// 1. Update selectDate to "prep" the UI
 async function selectDate(date) {
     selectedDate = date;
-    selectedTimeSlots = []; // Wipe previous floor's/date's selections
+    selectedTimeSlots = []; 
     
     renderCalendar();
     
-    // Reset UI display
-    const selectedDateInfo = document.getElementById('selectedDateInfo');
-    const selectedDateSpan = document.getElementById('selectedDate');
-    const timeSlotsContainer = document.getElementById('timeSlots');
-
-    selectedDateSpan.textContent = formatDate(date);
-    selectedDateInfo.classList.remove('hidden');
+    // Reveal the Date Info bar
+    document.getElementById('selectedDateInfo').classList.remove('hidden');
+    document.getElementById('selectedDate').textContent = formatDate(date);
     
-    // Clear the container so it doesn't show old buttons while loading
-    timeSlotsContainer.innerHTML = ''; 
+    // Reset the time slots container and show the section so it can load
+    document.getElementById('timeSlots').innerHTML = ''; 
+    document.getElementById('timeSlotsSection').classList.remove('hidden'); // CRITICAL
     
-    // Trigger the fetch and button rebuild
     await loadTimeSlots(date);
-    
-    // Ensure the confirmation form is hidden until a NEW time is clicked
     hideBookingForm();
 }
 
-// --- 3. Corrected loadTimeSlots Function ---
+// 2. Update loadTimeSlots to ensure visibility after data arrives
 async function loadTimeSlots(date) {
     showLoading(true);
     try {
         const dateStr = formatDateForAPI(date);
-        // Ensure level is passed to the API
         const response = await fetch(`/api/bookings/available/${dateStr}?level=${selectedLevel}`);
         
         if (!response.ok) throw new Error('Failed to load');
         
         const data = await response.json();
-        
-        // Build the physical buttons
         displayTimeSlots(data.available, data.booked);
         
-        // Ensure the section is visible after the buttons are built
-        document.getElementById('timeSlotsSection').classList.remove('hidden');
+        // Final safety check to show the section
+        document.getElementById('timeSlotsSection').classList.remove('hidden'); 
     } catch (error) {
         console.error('Error:', error);
         showToast('Failed to load slots', 'error');
