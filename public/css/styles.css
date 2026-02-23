@@ -4,7 +4,7 @@
     --success-color: #27ae60;
     --danger-color: #e74c3c;
     --bg-color: #ffffff;
-    --text-color: #000000;       /* Keep text strictly black for readability */
+    --text-color: #000000;       
     --border-color: #e2e8f0;
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
@@ -57,12 +57,12 @@ header h1 {
     font-weight: 600;
 }
 
-/* --- LOUNGE LEVEL SELECTOR (Segmented Control) --- */
+/* --- LOUNGE LEVEL SELECTOR --- */
 .lounge-selector {
     display: flex;
     gap: 4px;
     margin-bottom: 24px;
-    background: #f1f5f9; /* Soft grey track */
+    background: #f1f5f9; 
     padding: 6px;
     border-radius: 16px;
     border: 1px solid var(--border-color);
@@ -85,7 +85,6 @@ header h1 {
     gap: 2px;
 }
 
-/* Sub-label for context */
 .level-btn::after {
     content: 'Floor';
     font-size: 10px;
@@ -94,7 +93,6 @@ header h1 {
     letter-spacing: 0.5px;
 }
 
-/* Active State: The "Pop Out" effect */
 .level-btn.active {
     background: #ffffff; 
     color: #000000;
@@ -103,28 +101,7 @@ header h1 {
     border: 1px solid var(--primary-color);
 }
 
-.level-btn.active::after {
-    color: var(--secondary-color);
-    opacity: 1;
-}
-
-.level-btn:not(.active):hover {
-    background: rgba(255, 255, 255, 0.5);
-    color: #334155;
-}
-
 /* --- CALENDAR --- */
-.calendar-section {
-    margin-bottom: 24px;
-}
-
-.calendar-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-}
-
 .calendar-header h2, #currentMonth {
     font-size: 20px;
     color: #000000 !important;
@@ -143,11 +120,6 @@ header h1 {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s;
-}
-
-.nav-button:hover {
-    background: var(--secondary-color);
 }
 
 .calendar {
@@ -164,42 +136,11 @@ header h1 {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     cursor: pointer;
-    transition: all 0.2s;
     font-size: 14px;
-    background: white;
-}
-
-.calendar-day.header {
-    font-weight: 700;
-    color: #000000 !important;
-    cursor: default;
-    border: none;
-    background: transparent;
-}
-
-.calendar-day.disabled {
-    opacity: 0.2;
-    cursor: not-allowed;
 }
 
 .calendar-day.selected {
     background: var(--primary-color) !important;
-    color: #000000 !important;
-    border-color: var(--secondary-color);
-    font-weight: 700;
-}
-
-/* Selected Date Info Bar */
-.selected-date-info {
-    background: #f1f5f9; 
-    padding: 12px 16px;
-    border-radius: 12px;
-    margin-bottom: 16px;
-    border-left: 5px solid var(--primary-color);
-}
-
-.selected-date-info h3, #selectedDate {
-    font-size: 16px;
     color: #000000 !important;
     font-weight: 700;
 }
@@ -222,29 +163,46 @@ header h1 {
     background: white;
 }
 
-/* NEW: Indicator for past/disabled slots */
-.time-slot.disabled {
-    background-color: #f8fafc; /* Very light grey */
-    color: #cbd5e1;            /* Muted slate text */
-    border-color: #f1f5f9;     /* Faded border */
-    cursor: not-allowed;       /* "No entry" icon on hover */
-    opacity: 0.7;
-    pointer-events: none;      /* Extra safety to prevent clicks */
-}
-
 .time-slot.selected-slot {
     background: var(--primary-color) !important;
     color: #000000 !important;
     border-color: var(--secondary-color);
-    transform: translateY(-2px);
 }
 
+/* UPDATED: Booked slots now look interactive for Notes transparency */
 .time-slot.booked {
     background: #f1f5f9;
+    color: #94a3b8;
+    cursor: pointer;          /* Shows it can be clicked */
+    border: 1px dashed #cbd5e1;
+    text-decoration: none;    /* Removed line-through */
+}
+
+.time-slot.disabled {
+    background-color: #f8fafc;
     color: #cbd5e1;
     cursor: not-allowed;
-    border-color: #e2e8f0;
-    text-decoration: line-through;
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* --- NOTES BOX STYLING --- */
+#bookingNotes {
+    width: 100%;
+    margin: 12px 0;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: none;
+    transition: all 0.2s;
+}
+
+#bookingNotes:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background-color: #fffef0;
 }
 
 /* --- BOOKING FORM & BUTTONS --- */
@@ -257,31 +215,19 @@ header h1 {
     box-shadow: var(--shadow);
 }
 
-.booking-form h3 {
-    margin-bottom: 12px;
-    border-bottom: 2px solid var(--primary-color);
-    display: inline-block;
-}
-
 .btn {
-    flex: 1;
     padding: 14px;
     border: none;
     border-radius: 12px;
     font-size: 16px;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s;
 }
 
 .btn-primary {
     background: var(--primary-color);
     color: #000000;
-}
-
-.btn-secondary {
-    background: #f1f5f9;
-    color: #475569;
+    width: 100%;
 }
 
 .btn-danger {
@@ -289,20 +235,9 @@ header h1 {
     color: white;
 }
 
-/* --- MY BOOKINGS --- */
-.booking-card {
-    background: white;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 12px;
-    border-left: 5px solid var(--primary-color);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
+/* --- MISC --- */
 .hidden { display: none !important; }
 
-/* --- LOADING & TOAST --- */
 .loading {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -322,17 +257,3 @@ header h1 {
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
-
-.toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 12px 24px;
-    border-radius: 12px;
-    color: white;
-    font-weight: 600;
-    z-index: 2000;
-}
-.toast.success { background: var(--success-color); }
-.toast.error { background: var(--danger-color); }

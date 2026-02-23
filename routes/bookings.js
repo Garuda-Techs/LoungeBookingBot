@@ -36,11 +36,11 @@ async function getOrCreateUser(telegramUser) {
   });
 }
 
-// Get available time slots for a specific date AND level
+// Get available time slots with booking details for transparency
 router.get('/available/:date', async (req, res) => {
   try {
     const { date } = req.params;
-    const level = parseInt(req.query.level) || 9; // Default to Level 9 if not specified
+    const level = parseInt(req.query.level) || 9;
     
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(date)) {
@@ -49,26 +49,30 @@ router.get('/available/:date', async (req, res) => {
     
     const database = db.getDb();
     
-    // Get booked slots for the date and specific lounge level
-    database.all(
-      'SELECT time_slot FROM bookings WHERE date = ? AND lounge_level = ? AND status = ?',
-      [date, level, 'active'],
-      (err, rows) => {
-        if (err) {
-          return res.status(500).json({ error: 'Database error' });
-        }
-        
-        const bookedSlots = rows.map(row => row.time_slot);
-        const availableSlots = ALL_TIME_SLOTS.filter(slot => !bookedSlots.includes(slot));
-        
-        res.json({
-          date,
-          lounge_level: level,
-          available: availableSlots,
-          booked: bookedSlots
-        });
+    // UPDATED QUERY: JOIN with users to get the name and include notes
+    const sql = `
+      SELECT b.time_slot, b.notes, u.first_name 
+      FROM bookings b
+      JOIN users u ON b.user_id = u.id
+      WHERE b.date = ? AND b.lounge_level = ? AND b.status = 'active'
+    `;
+
+    database.all(sql, [date, level], (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error' });
       }
-    );
+      
+      // rows now contains [{time_slot: '12:00', notes: 'Study', first_name: 'Gabriel'}, ...]
+      const bookedSlots = rows.map(row => row.time_slot);
+      const availableSlots = ALL_TIME_SLOTS.filter(slot => !bookedSlots.includes(slot));
+      
+      res.json({
+        date,
+        lounge_level: level,
+        available: availableSlots,
+        bookedDetails: rows // Send the full objects to the frontend
+      });
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

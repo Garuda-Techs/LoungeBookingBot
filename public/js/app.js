@@ -173,7 +173,9 @@ async function loadTimeSlots(date) {
         if (!response.ok) throw new Error('Failed to load');
         
         const data = await response.json();
-        displayTimeSlots(data.available, data.booked);
+        
+        // Pass the new 'bookedDetails' instead of just 'data.booked'
+        displayTimeSlots(data.available, data.bookedDetails); 
         
         document.getElementById('timeSlotsSection').classList.remove('hidden'); 
     } catch (error) {
@@ -184,12 +186,21 @@ async function loadTimeSlots(date) {
     }
 }
 
-function displayTimeSlots(available, booked) {
+function displayTimeSlots(available, bookedDetails) {
     const timeSlotsSection = document.getElementById('timeSlotsSection');
     const timeSlotsContainer = document.getElementById('timeSlots');
     
     timeSlotsContainer.innerHTML = '';
-    const allSlots = [...available, ...booked].sort();
+
+    // Create a Map of booked details for easy lookup
+    const bookedMap = new Map();
+    bookedDetails.forEach(booking => {
+        bookedMap.set(booking.time_slot, booking);
+    });
+
+    // Create a master list of all times to sort them correctly
+    const bookedTimes = bookedDetails.map(b => b.time_slot);
+    const allSlots = [...available, ...bookedTimes].sort();
     
     if (allSlots.length === 0) {
         timeSlotsContainer.innerHTML = '<p class="empty-message">No time slots available</p>';
@@ -209,11 +220,26 @@ function displayTimeSlots(available, booked) {
         slotElement.textContent = slot;
         const slotHour = parseInt(slot.split(':')[0], 10);
         
-        if (booked.includes(slot)) {
+        if (bookedMap.has(slot)) {
+            // THE TRANSPARENCY PART
+            const detail = bookedMap.get(slot);
             slotElement.classList.add('booked');
+            
+            // Add a click listener even to booked slots
+            slotElement.addEventListener('click', () => {
+                const info = `👤 Reserved by: ${detail.first_name}\n📝 Note: ${detail.notes || 'No notes'}`;
+                
+                // Use the Native Telegram Popup for a better look
+                if (tg) {
+                    tg.showAlert(info);
+                } else {
+                    alert(info);
+                }
+            });
         } else if (isToday && slotHour <= currentHour) {
             slotElement.classList.add('disabled'); 
         } else {
+            // Available slot selection
             slotElement.addEventListener('click', function() {
                 selectTimeSlot(slot, this); 
             });
@@ -368,7 +394,7 @@ function displayMyBookings(bookings) {
         card.className = 'booking-card';
         
         card.setAttribute('data-booking-id', booking.id);
-        
+
         const header = document.createElement('div');
         header.className = 'booking-card-header';
         
