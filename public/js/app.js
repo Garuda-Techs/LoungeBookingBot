@@ -257,6 +257,12 @@ function showBookingForm() {
     const bookingForm = document.getElementById('bookingForm');
     const bookingDate = document.getElementById('bookingDate');
     const bookingTime = document.getElementById('bookingTime');
+    // Add this line to target the lounge level display
+    const bookingLounge = document.getElementById('bookingLounge'); 
+    
+    if (bookingLounge) {
+        bookingLounge.textContent = `Level ${selectedLevel}`;
+    }
     
     bookingDate.textContent = formatDate(selectedDate);
     bookingTime.textContent = selectedTimeSlots.join(', '); 
