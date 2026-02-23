@@ -89,7 +89,6 @@ function displayUserInfo() {
     }
 }
 
-// Render calendar
 function renderCalendar() {
     const calendar = document.getElementById('calendar');
     const monthYear = document.getElementById('currentMonth');
@@ -129,17 +128,20 @@ function renderCalendar() {
         const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
         dateObj.setHours(0, 0, 0, 0);
         
+        // Disable past dates
         if (dateObj < today) {
             dayElement.classList.add('disabled');
         } else {
             dayElement.addEventListener('click', () => selectDate(dateObj));
         }
         
-        if (selectedDate && 
-            dateObj.getDate() === selectedDate.getDate() &&
-            dateObj.getMonth() === selectedDate.getMonth() &&
-            dateObj.getFullYear() === selectedDate.getFullYear()) {
-            dayElement.classList.add('selected');
+        // THE FIX: Precise comparison to highlight the selected date
+        if (selectedDate) {
+            const isSelected = dateObj.getTime() === selectedDate.getTime();
+            if (isSelected) {
+                console.log("Highlighting day:", day); // Check your console to verify
+                dayElement.classList.add('selected');
+            }
         }
         
         calendar.appendChild(dayElement);
