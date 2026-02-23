@@ -187,67 +187,40 @@ async function loadTimeSlots(date) {
 }
 
 function displayTimeSlots(available, bookedDetails) {
-    const timeSlotsSection = document.getElementById('timeSlotsSection');
     const timeSlotsContainer = document.getElementById('timeSlots');
-    
     timeSlotsContainer.innerHTML = '';
 
-    // Create a Map of booked details for easy lookup
+    // Create a Map to store the objects by their time
     const bookedMap = new Map();
-    bookedDetails.forEach(booking => {
-        bookedMap.set(booking.time_slot, booking);
-    });
-
-    // Create a master list of all times to sort them correctly
-    const bookedTimes = bookedDetails.map(b => b.time_slot);
-    const allSlots = [...available, ...bookedTimes].sort();
-    
-    if (allSlots.length === 0) {
-        timeSlotsContainer.innerHTML = '<p class="empty-message">No time slots available</p>';
-        return;
+    if (bookedDetails && Array.isArray(bookedDetails)) {
+        bookedDetails.forEach(booking => {
+            bookedMap.set(booking.time_slot, booking);
+        });
     }
-    
-    const now = new Date();
-    const isToday = selectedDate && 
-                    selectedDate.getDate() === now.getDate() &&
-                    selectedDate.getMonth() === now.getMonth() &&
-                    selectedDate.getFullYear() === now.getFullYear();
-    const currentHour = now.getHours();
 
-    allSlots.forEach(slot => {
+    // Combine both lists to show all 24 slots
+    ALL_TIME_SLOTS.forEach(slot => {
         const slotElement = document.createElement('div');
         slotElement.className = 'time-slot';
         slotElement.textContent = slot;
-        const slotHour = parseInt(slot.split(':')[0], 10);
-        
+
         if (bookedMap.has(slot)) {
-            // THE TRANSPARENCY PART
+            // This is the "Notes" part: make it clickable for info but not for booking
             const detail = bookedMap.get(slot);
             slotElement.classList.add('booked');
-            
-            // Add a click listener even to booked slots
-            slotElement.addEventListener('click', () => {
+            slotElement.onclick = () => {
                 const info = `👤 Reserved by: ${detail.first_name}\n📝 Note: ${detail.notes || 'No notes'}`;
-                
-                // Use the Native Telegram Popup for a better look
-                if (tg) {
-                    tg.showAlert(info);
-                } else {
-                    alert(info);
-                }
-            });
-        } else if (isToday && slotHour <= currentHour) {
-            slotElement.classList.add('disabled'); 
+                if (window.Telegram?.WebApp) window.Telegram.WebApp.showAlert(info);
+                else alert(info);
+            };
         } else {
-            // Available slot selection
-            slotElement.addEventListener('click', function() {
+            // Standard available slot selection
+            slotElement.onclick = function() {
                 selectTimeSlot(slot, this); 
-            });
+            };
         }
         timeSlotsContainer.appendChild(slotElement);
     });
-    
-    timeSlotsSection.classList.remove('hidden');
 }
 
 function selectTimeSlot(timeSlot, element) {
