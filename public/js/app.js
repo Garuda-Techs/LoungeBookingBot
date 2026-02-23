@@ -146,7 +146,7 @@ function renderCalendar() {
     }
 }
 
-// 1. Update selectDate to "prep" the UI
+// 1. Updated selectDate
 async function selectDate(date) {
     selectedDate = date;
     selectedTimeSlots = []; 
@@ -157,12 +157,16 @@ async function selectDate(date) {
     document.getElementById('selectedDateInfo').classList.remove('hidden');
     document.getElementById('selectedDate').textContent = formatDate(date);
     
-    // Reset the time slots container and show the section so it can load
+    // Clear old buttons
     document.getElementById('timeSlots').innerHTML = ''; 
-    document.getElementById('timeSlotsSection').classList.remove('hidden'); // CRITICAL
+    
+    // IMPORTANT: Call hideBookingForm to reset the bottom confirmation form...
+    hideBookingForm(); 
+    
+    // ...BUT immediately reveal the timeSlotsSection again so the buttons can show!
+    document.getElementById('timeSlotsSection').classList.remove('hidden'); 
     
     await loadTimeSlots(date);
-    hideBookingForm();
 }
 
 // 2. Update loadTimeSlots to ensure visibility after data arrives
@@ -187,7 +191,7 @@ async function loadTimeSlots(date) {
     }
 }
 
-// Display time slots
+// 2. Updated displayTimeSlots
 function displayTimeSlots(available, booked) {
     const timeSlotsSection = document.getElementById('timeSlotsSection');
     const timeSlotsContainer = document.getElementById('timeSlots');
@@ -205,31 +209,27 @@ function displayTimeSlots(available, booked) {
                     selectedDate.getDate() === now.getDate() &&
                     selectedDate.getMonth() === now.getMonth() &&
                     selectedDate.getFullYear() === now.getFullYear();
-                    
     const currentHour = now.getHours();
 
     allSlots.forEach(slot => {
         const slotElement = document.createElement('div');
         slotElement.className = 'time-slot';
         slotElement.textContent = slot;
-        
         const slotHour = parseInt(slot.split(':')[0], 10);
         
         if (booked.includes(slot)) {
             slotElement.classList.add('booked');
-            slotElement.title = 'Already booked';
         } else if (isToday && slotHour <= currentHour) {
             slotElement.classList.add('disabled'); 
-            slotElement.title = 'Time has passed';
         } else {
             slotElement.addEventListener('click', function() {
                 selectTimeSlot(slot, this); 
             });
         }
-        
         timeSlotsContainer.appendChild(slotElement);
     });
     
+    // FINAL SAFETY: Ensure the section is visible after buttons are built
     timeSlotsSection.classList.remove('hidden');
 }
 
