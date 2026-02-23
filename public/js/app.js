@@ -269,30 +269,26 @@ function hideBookingForm() {
     const bookingForm = document.getElementById('bookingForm');
     const bookingNotes = document.getElementById('bookingNotes');
     
-    // 1. Hide the form
     bookingForm.classList.add('hidden');
-    
-    // 2. Clear the notes text
     bookingNotes.value = '';
-    
-    // 3. IMPORTANT: Reset the selection state
     selectedTimeSlots = [];
     
-    // 4. Remove the yellow highlight from all time slot buttons
-    const allSlots = document.querySelectorAll('.time-slot');
-    allSlots.forEach(slot => {
+    // Remove blue highlights from time slots
+    const highlightedSlots = document.querySelectorAll('.time-slot.selected-slot');
+    highlightedSlots.forEach(slot => {
         slot.classList.remove('selected-slot');
     });
 
-    // 5. Also hide the time slot section if you want a full reset
-    document.getElementById('timeSlotsSection').classList.add('hidden');
-    document.getElementById('selectedDateInfo').classList.add('hidden');
-    
-    // 6. Remove the selection highlight from the calendar
-    const selectedDay = document.querySelector('.calendar-day.selected');
-    if (selectedDay) {
-        selectedDay.classList.remove('selected');
+    // NEW: Remove blue highlight from the calendar date
+    const selectedCalendarDay = document.querySelector('.calendar-day.selected');
+    if (selectedCalendarDay) {
+        selectedCalendarDay.classList.remove('selected');
     }
+    
+    // Hide the "Selected Date: ..." info bar
+    document.getElementById('selectedDateInfo').classList.add('hidden');
+    // Hide the time slots section
+    document.getElementById('timeSlotsSection').classList.add('hidden');
 }
 
 // Confirm booking
