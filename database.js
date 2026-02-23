@@ -29,12 +29,6 @@ function initialize() {
       }
       
       console.log(`Connected to SQLite database at ${DB_PATH}`);
-
-      // --- THE SPEED FIXES ---
-      // 1. Enable Write-Ahead Logging for concurrent read/writes
-      db.run("PRAGMA journal_mode = WAL;"); 
-      // 2. Prevent "Database is locked" errors by waiting up to 5s
-      db.run("PRAGMA busy_timeout = 5000;");
       
       // Create tables
       db.serialize(() => {

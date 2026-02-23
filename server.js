@@ -17,17 +17,17 @@ try {
 }
 
 const app = express();
-const PORT = process.env.PORT || 8080; // Railway uses 8080 usually
+const PORT = process.env.PORT || 3000;
 
-// --- THE FIX FOR RESPONSIVENESS ---
-// Tell Express to trust Railway's proxy headers
+// --- THE FIX FOR CANCELLING RESPONSIVENESS ---
+// Tell Express to trust Railway's proxy headers so rateLimit works correctly
 app.set('trust proxy', 1); 
 
-// --- UPDATED RATE LIMITER ---
+// Rate limiting configuration
 const apiLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute window
-  max: 300,               // High limit for rapid testing
-  message: 'Too many requests, please try again in a minute.',
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, 
+  message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -39,12 +39,11 @@ const corsOptions = {
     : '*',
   optionsSuccessStatus: 200
 };
-
 app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Apply rate limiting once to all API routes
+// Apply rate limiting to API routes
 app.use('/api/', apiLimiter);
 
 // Serve static files (frontend)
@@ -63,12 +62,12 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Initialize database (with WAL mode) and start server
+// Initialize database and start server
 db.initialize()
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'production'}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     });
   })
   .catch(err => {
