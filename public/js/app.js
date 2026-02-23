@@ -148,26 +148,24 @@ function renderCalendar() {
     }
 }
 
-// 1. Updated selectDate
 async function selectDate(date) {
-    selectedDate = date;
+    selectedDate = new Date(date);
+    selectedDate.setHours(0, 0, 0, 0); // Normalize for getTime() comparison
     selectedTimeSlots = []; 
     
-    renderCalendar();
-    
-    // Reveal the Date Info bar
-    document.getElementById('selectedDateInfo').classList.remove('hidden');
-    document.getElementById('selectedDate').textContent = formatDate(date);
-    
-    // Clear old buttons
-    document.getElementById('timeSlots').innerHTML = ''; 
-    
-    // IMPORTANT: Call hideBookingForm to reset the bottom confirmation form...
+    // 1. Hide the old booking form first
     hideBookingForm(); 
     
-    // ...BUT immediately reveal the timeSlotsSection again so the buttons can show!
+    // 2. NOW draw the calendar (this applies the yellow highlight)
+    renderCalendar();
+    
+    // 3. Update the text and reveal sections
+    document.getElementById('selectedDateInfo').classList.remove('hidden');
+    document.getElementById('selectedDate').textContent = formatDate(date);
+    document.getElementById('timeSlots').innerHTML = '<p class="empty-message">Loading timings...</p>'; 
     document.getElementById('timeSlotsSection').classList.remove('hidden'); 
     
+    // 4. Load the data
     await loadTimeSlots(date);
 }
 
@@ -272,31 +270,22 @@ function hideBookingForm() {
     const bookingNotes = document.getElementById('bookingNotes');
     const bookingTime = document.getElementById('bookingTime');
     
-    // 1. Hide the confirmation section
     bookingForm.classList.add('hidden');
-    
-    // 2. Clear the input and the stuck text labels
     bookingNotes.value = '';
-    bookingTime.textContent = ''; // This clears the "02:00, 03:00" text
-    
-    // 3. Wipe the underlying state array
+    bookingTime.textContent = ''; 
     selectedTimeSlots = [];
     
-    // 4. Remove the yellow highlights from the time slot buttons
     const highlightedSlots = document.querySelectorAll('.time-slot.selected-slot');
     highlightedSlots.forEach(slot => {
         slot.classList.remove('selected-slot');
     });
 
-    // 5. Hide the supporting sections to force a fresh start
-    document.getElementById('selectedDateInfo').classList.add('hidden');
-    document.getElementById('timeSlotsSection').classList.add('hidden');
-    
-    // 6. Deselect the calendar date
-    const selectedCalendarDay = document.querySelector('.calendar-day.selected');
+    // REMOVE OR COMMENT OUT THIS PART BELOW:
+    /* const selectedCalendarDay = document.querySelector('.calendar-day.selected');
     if (selectedCalendarDay) {
         selectedCalendarDay.classList.remove('selected');
     }
+    */
 }
 
 // Confirm booking with Level support
