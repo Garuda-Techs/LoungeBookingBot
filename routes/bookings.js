@@ -102,3 +102,133 @@ router.post('/', async (req, res) => {
     }
     
     // Validate date format (YYYY-MM-DD)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+    
+    // Validate date is not in the past
+    const bookingDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (bookingDate < today) {
+      return res.status(400).json({ error: 'Cannot book dates in the past' });
+    }
+    
+    // Validate ALL requested time slots format and availability
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    for (const slot of timeSlots) {
+        if (!timeRegex.test(slot) || !ALL_TIME_SLOTS.includes(slot)) {
+            return res.status(400).json({ error: `Invalid or unavailable time slot: ${slot}` });
+        }
+    }
+    
+    // Validate notes length
+    if (notes && notes.length > 500) {
+      return res.status(400).json({ error: 'Notes must be 500 characters or less' });
+    }
+    
+    // Get or create user
+    const user = await getOrCreateUser(telegramUser);
+    
+    const database = db.getDb();
+    
+    // Check if ANY of the requested slots were just booked by someone else
+    const placeholders = timeSlots.map(() => '?').join(',');
+    database.get(
+        `SELECT COUNT(*) as count FROM bookings WHERE date = ? AND status = 'active' AND time_slot IN (${placeholders})`,
+        [date, ...timeSlots],
+        (err, conflictRow) => {
+            if (err) {
+                return res.status(500).json({ error: 'Database error checking conflicts' });
+            }
+            
+            if (conflictRow && conflictRow.count > 0) {
+                return res.status(409).json({ error: 'One or more selected slots were just booked by someone else!' });
+            }
+
+            // Bulk Insert all slots into the database
+            const insertPlaceholders = timeSlots.map(() => '(?, ?, ?, ?, ?)').join(',');
+            const insertValues = [];
+            timeSlots.forEach(slot => {
+                insertValues.push(user.id, date, slot, notes, 'active');
+            });
+
+            database.run(
+                `INSERT INTO bookings (user_id, date, time_slot, notes, status) VALUES ${insertPlaceholders}`,
+                insertValues,
+                function(err) {
+                    if (err) {
+                        return res.status(500).json({ error: 'Failed to create multi-hour booking' });
+                    }
+                    
+                    res.status(201).json({ message: 'Bookings created successfully', status: 'active' });
+                }
+            );
+        }
+    );
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get user's bookings
+router.get('/user/:telegramId', async (req, res) => {
+  try {
+    const { telegramId } = req.params;
+    const database = db.getDb();
+    
+    database.all(
+      `SELECT b.* FROM bookings b 
+       JOIN users u ON b.user_id = u.id 
+       WHERE u.telegram_id = ? AND b.status = ?
+       ORDER BY b.date, b.time_slot`,
+      [telegramId, 'active'],
+      (err, rows) => {
+        if (err) {
+          return res.status(500).json({ error: 'Database error' });
+        }
+        
+        res.json(rows);
+      }
+    );
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Cancel a booking
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { telegramId } = req.body;
+    
+    if (!telegramId) {
+      return res.status(400).json({ error: 'Missing telegram ID' });
+    }
+    
+    const database = db.getDb();
+    
+    // Verify ownership and cancel
+    database.run(
+      `UPDATE bookings SET status = 'cancelled' 
+       WHERE id = ? AND user_id IN (SELECT id FROM users WHERE telegram_id = ?)`,
+      [id, telegramId],
+      function(err) {
+        if (err) {
+          return res.status(500).json({ error: 'Database error' });
+        }
+        
+        if (this.changes === 0) {
+          return res.status(404).json({ error: 'Booking not found or unauthorized' });
+        }
+        
+        res.json({ message: 'Booking cancelled successfully' });
+      }
+    );
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+module.exports = router;
