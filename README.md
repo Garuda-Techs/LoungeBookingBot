@@ -1,25 +1,25 @@
 # 🏢 CAPT Garuda Lounge Booking Bot
 
-A Telegram Mini App for booking time slots at the CAPT Garuda Lounge. This bot provides a mobile-friendly interface for users to select dates and time slots in a calendar fashion, with automatic profile autofill from Telegram.
+A Telegram Mini App for booking time slots at the CAPT Garuda Lounge (Levels 9, 10, and 11). This bot provides a mobile-first interface for residents to select lounge levels, dates, and multi-hour time slots with automatic profile integration from Telegram.
 
 ## ✨ Features
 
-- 📱 **Telegram Mini App Integration** - Seamlessly integrated with Telegram
-- 📅 **Interactive Calendar** - Easy-to-use calendar interface for date selection
-- ⏰ **Time Slot Management** - View available time slots in real-time
-- 👤 **User Profile Autofill** - Automatic profile information from Telegram
-- 💾 **Booking Management** - View and cancel your bookings
-- 📱 **Mobile-Friendly** - Responsive design optimized for mobile devices
-- ⚡ **Real-time Updates** - See slot availability instantly
+- 📱 **Telegram Mini App Integration** - Seamless integration with Telegram Mini Apps and `initDataUnsafe` profile autofill.
+- 🏢 **Multi-Level Support** - Independent booking tracks for Level 9, 10, and 11 lounges.
+- 📅 **Interactive Calendar** - Highlights selection, disables past dates, and prevents invalid ranges.
+- ⏰ **Multi-Slot Selection** - Book multiple consecutive hourly slots in a single transaction.
+- 👤 **User Profile Autofill** - Automatic profile data retrieval from the Telegram web app payload.
+- 💾 **Persistence** - SQLite database with recommended Railway Volume mounting for data durability.
+- 🔒 **Proxy-Aware & Secure** - Server configured for `trust proxy`, rate limiting, and authorization checks.
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js (v18 or higher recommended)
 - npm or yarn
-- A Telegram Bot Token (get it from [@BotFather](https://t.me/BotFather))
-- A web server with HTTPS (required for Telegram Mini Apps)
+- A Telegram Bot Token from [@BotFather](https://t.me/BotFather)
+- HTTPS-enabled web hosting for Telegram Mini Apps
 
 ### Installation
 
@@ -34,174 +34,103 @@ cd LoungeBookingBot
 npm install
 ```
 
-3. Create a `.env` file based on `.env.example`:
-```bash
-cp .env.example .env
-```
-
-4. Configure your environment variables in `.env`:
+3. Create `.env` from the example and configure the variables:
 ```env
-TELEGRAM_BOT_TOKEN=your_bot_token_here
-TELEGRAM_BOT_USERNAME=your_bot_username
+TELEGRAM_BOT_TOKEN=your_bot_token
+WEB_APP_URL=https://your-app-url
+NODE_ENV=production
+TRUST_PROXY=true
 PORT=3000
-WEB_APP_URL=https://your-domain.com
-DB_PATH=./lounge_bookings.db
+DB_PATH=./data/lounge_bookings.db
 ```
 
-### Setting Up the Telegram Bot
-
-1. Create a bot with [@BotFather](https://t.me/BotFather):
-   - Send `/newbot` and follow the instructions
-   - Save the bot token
-
-2. Set up the Web App:
-   - Send `/newapp` to @BotFather
-   - Select your bot
-   - Provide a title, description, and photo
-   - Enter your web app URL (must be HTTPS)
-
-3. Configure the bot commands with @BotFather:
-   ```
-   start - Start the bot
-   book - Open booking app
-   help - Show help message
-   ```
-
-### Running the Application
-
-1. Start the web server:
-```bash
-npm start
-```
-
-2. (Optional) Run the bot in a separate terminal:
-```bash
-npm run bot
-```
-
-The server will start on the port specified in your `.env` file (default: 3000).
-
-## 📖 Usage
-
-### For Users
-
-1. Open your Telegram app and search for your bot
-2. Send `/start` to the bot
-3. Click "📅 Book a Slot" to open the mini app
-4. Select a date from the calendar
-5. Choose an available time slot
-6. Add any notes (optional)
-7. Confirm your booking
-8. View and manage your bookings in the "My Bookings" section
-
-### Bot Commands
-
-- `/start` - Start the bot and see welcome message
-- `/book` - Open the booking mini app
-- `/help` - Display help information
+Notes:
+- Set `TRUST_PROXY=true` in production when the app runs behind a reverse proxy (Railway, Heroku, Nginx, etc.).
+- For persistence on Railway, mount a Volume to `/app/data` and set `DB_PATH=/app/data/lounge_bookings.db`.
 
 ## 🏗️ Project Structure
 
-```
-LoungeBookingBot/
-├── public/              # Frontend files
-│   ├── css/
-│   │   └── styles.css   # Styles for the mini app
-│   ├── js/
-│   │   └── app.js       # Frontend JavaScript
-│   └── index.html       # Main HTML file
-├── routes/
-│   └── bookings.js      # Booking API routes
-├── bot.js               # Telegram bot logic
-├── database.js          # Database initialization and helpers
-├── server.js            # Express server
-├── package.json         # Dependencies and scripts
-├── .env.example         # Environment variables template
-└── README.md            # This file
-```
+- `public/js/app.js` — Frontend logic (level switching, multi-slot selection, calendar tweaks).
+- `server.js` — Express server configured with `trust proxy`, rate limiting, and JSON parsing.
+- `routes/bookings.js` — Secure API endpoints for availability, booking, and cancellations.
+- `database.js` — SQLite schema initialization and connection pooling.
+- `bot.js` — Telegram bot logic that opens the mini app and handles commands.
 
-## 🔌 API Endpoints
+## 🔌 API Endpoints (Updated)
 
-### Get Available Time Slots
+### Get Available Slots
 ```
-GET /api/bookings/available/:date
+GET /api/bookings/available/:date?level=9
 ```
-Returns available and booked time slots for a specific date.
+Returns available and booked slots for the specified lounge level and date.
+
+Response sample:
+```json
+{
+  "date":"2026-02-24",
+  "level":9,
+  "available":["08:00","09:00","10:00"],
+  "booked":[{"time":"11:00","telegramId":12345}]
+}
+```
 
 ### Create Booking
 ```
 POST /api/bookings
 Body: {
-  telegramUser: { id, username, first_name, last_name },
-  date: "YYYY-MM-DD",
-  timeSlot: "HH:MM",
-  notes: "optional notes"
+  "telegramUser": { "id": 12345, "first_name": "Gabriel" },
+  "lounge_level": 9,
+  "date": "2026-02-24",
+  "timeSlots": ["08:00","09:00"],
+  "notes": "Study group"
 }
 ```
+- `timeSlots` accepts an array of consecutive hourly slots. The server validates overlaps and conflicts per level.
 
 ### Get User Bookings
 ```
 GET /api/bookings/user/:telegramId
 ```
-Returns all active bookings for a user.
+Returns active bookings for the Telegram user.
 
 ### Cancel Booking
 ```
 DELETE /api/bookings/:id
-Body: { telegramId: "user_telegram_id" }
+Body: { "telegramId": 12345 }
 ```
-
-## 💾 Database
-
-The application uses SQLite for data storage with the following tables:
-
-- **users** - Stores user information from Telegram
-- **bookings** - Stores booking records with date, time, and status
+- Cancellation requires the Telegram ID to match the booking owner; server verifies authorization.
 
 ## 🔒 Security
 
-- User authentication through Telegram
-- Input validation on all API endpoints
-- SQL injection prevention with parameterized queries
-- CORS enabled for web app requests
+- `trust proxy` support for correct client IP handling behind proxies.
+- Rate limiting middleware to mitigate abuse while allowing trusted proxies.
+- Parameterized SQL queries to prevent injection.
+- Authorization checks for cancellation and booking management.
 
-## 🌐 Deployment
+## 🌐 Deployment (Railway recommended)
 
-### Deployment Options
+1. Create and mount a Volume at `/app/data` to persist `lounge_bookings.db` across restarts.
+2. Set required environment variables: `TELEGRAM_BOT_TOKEN`, `WEB_APP_URL`, `TRUST_PROXY=true`, `PORT`, `NODE_ENV=production`, `DB_PATH=/app/data/lounge_bookings.db`.
+3. Deploy and ensure HTTPS is enabled for the web app URL (Telegram requirement).
 
-1. **Heroku**
-   - Add Heroku Postgres add-on (or use SQLite)
-   - Set environment variables
-   - Deploy with Git
+## ✅ What Changed (summary)
 
-2. **Railway**
-   - Connect your GitHub repository
-   - Set environment variables
-   - Deploy automatically
+- **Multi-Level & Multi-Slot**: Backend and frontend support selecting lounge level (9/10/11) and booking multiple consecutive slots.
+- **Proxy Configuration**: Add `TRUST_PROXY` environment variable and Express `app.set('trust proxy', true)` recommendation to fix cancel-button responsiveness behind proxies.
+- **Railway Volume Tips**: Guidance to mount a volume for SQLite persistence.
+- **API Update**: `POST /api/bookings` now accepts `lounge_level` and `timeSlots` array.
 
-3. **VPS (DigitalOcean, AWS, etc.)**
-   - Install Node.js
-   - Use PM2 for process management
-   - Set up Nginx as reverse proxy
-   - Configure SSL with Let's Encrypt
+## 🧪 Testing & Local Run
 
-### Important Notes
-
-- Telegram Mini Apps require HTTPS
-- Set the correct `WEB_APP_URL` in your environment
-- Keep your bot token secure
+Start server locally (development):
+```bash
+npm start
+```
+Use `npm run bot` in a separate terminal to run the Telegram bot locally (if configured).
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📝 License
-
-ISC License
-
-## 📧 Support
-
-For issues or questions, please open an issue on GitHub or contact the lounge administrator.
+Contributions are welcome — open a PR or an issue.
 
 ---
 

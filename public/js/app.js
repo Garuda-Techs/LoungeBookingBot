@@ -367,6 +367,8 @@ function displayMyBookings(bookings) {
         const card = document.createElement('div');
         card.className = 'booking-card';
         
+        card.setAttribute('data-booking-id', booking.id);
+        
         const header = document.createElement('div');
         header.className = 'booking-card-header';
         
@@ -406,16 +408,16 @@ function displayMyBookings(bookings) {
     });
 }
 
-// Renamed to avoid name collision with form cancel button
 async function handleDeleteBooking(bookingId) {
-    if (!telegramUser) {
-        showToast('User info missing', 'error');
-        return;
-    }
-    
     if (!confirm('Are you sure you want to cancel this booking?')) return;
-    
-    showLoading(true);
+
+    // 1. OPTIMISTIC UI: Dim the card instantly
+    const card = document.querySelector(`[data-booking-id="${bookingId}"]`);
+    if (card) {
+        card.style.opacity = '0.3';
+        card.style.pointerEvents = 'none'; // Stop double-clicks that cause lag
+    }
+
     try {
         const response = await fetch(`/api/bookings/${bookingId}`, {
             method: 'DELETE',
@@ -423,18 +425,23 @@ async function handleDeleteBooking(bookingId) {
             body: JSON.stringify({ telegramId: telegramUser.id })
         });
         
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to cancel');
-        }
+        if (!response.ok) throw new Error('Delete failed');
         
-        showToast('Booking cancelled', 'success');
-        await loadMyBookings();
-        if (selectedDate) await loadTimeSlots(selectedDate);
+        showToast('Booking cancelled!', 'success');
+
+        // 2. PARALLEL REFRESH: Refresh everything at once instead of one-by-one
+        Promise.all([
+            loadMyBookings(),
+            selectedDate ? loadTimeSlots(selectedDate) : Promise.resolve()
+        ]);
+
     } catch (error) {
+        // ROLLBACK: If it fails, bring the card back
+        if (card) {
+            card.style.opacity = '1';
+            card.style.pointerEvents = 'auto';
+        }
         showToast(error.message, 'error');
-    } finally {
-        showLoading(false);
     }
 }
 
