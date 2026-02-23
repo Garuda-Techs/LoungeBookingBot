@@ -32,25 +32,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         displayUserInfo();
     }
     
-    // NEW: Level Switcher Logic
+    // --- 1. Corrected Level Switcher (Inside DOMContentLoaded) ---
     document.querySelectorAll('.level-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            // Update UI: Toggle 'active' class
+            // Update UI
             document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             
             // Update State
             selectedLevel = parseInt(this.dataset.level);
             
-            // Update the confirmation form label
-            const confirmLevel = document.getElementById('confirmLevel');
-            if (confirmLevel) confirmLevel.textContent = selectedLevel;
+            // CRITICAL: Reset selections so old floor timings don't "ghost" back
+            selectedTimeSlots = []; 
+            hideBookingForm(); 
 
-            // Reset and refresh data for the new floor
+            // Refresh timings for the new floor if a date is already active
             if (selectedDate) {
                 loadTimeSlots(selectedDate);
             }
-            hideBookingForm();
         });
     });
     
@@ -147,40 +146,51 @@ function renderCalendar() {
     }
 }
 
-// Select a date
+// --- 2. Corrected selectDate Function ---
 async function selectDate(date) {
     selectedDate = date;
-    selectedTimeSlots = []; 
+    selectedTimeSlots = []; // Wipe previous floor's/date's selections
     
     renderCalendar();
     
+    // Reset UI display
     const selectedDateInfo = document.getElementById('selectedDateInfo');
     const selectedDateSpan = document.getElementById('selectedDate');
+    const timeSlotsContainer = document.getElementById('timeSlots');
+
     selectedDateSpan.textContent = formatDate(date);
     selectedDateInfo.classList.remove('hidden');
     
+    // Clear the container so it doesn't show old buttons while loading
+    timeSlotsContainer.innerHTML = ''; 
+    
+    // Trigger the fetch and button rebuild
     await loadTimeSlots(date);
+    
+    // Ensure the confirmation form is hidden until a NEW time is clicked
     hideBookingForm();
 }
 
-// Load time slots for a date AND level
+// --- 3. Corrected loadTimeSlots Function ---
 async function loadTimeSlots(date) {
     showLoading(true);
-    
     try {
         const dateStr = formatDateForAPI(date);
-        // UPDATED: Added ?level= to the fetch URL
+        // Ensure level is passed to the API
         const response = await fetch(`/api/bookings/available/${dateStr}?level=${selectedLevel}`);
         
-        if (!response.ok) {
-            throw new Error('Failed to load time slots');
-        }
+        if (!response.ok) throw new Error('Failed to load');
         
         const data = await response.json();
+        
+        // Build the physical buttons
         displayTimeSlots(data.available, data.booked);
+        
+        // Ensure the section is visible after the buttons are built
+        document.getElementById('timeSlotsSection').classList.remove('hidden');
     } catch (error) {
-        console.error('Error loading time slots:', error);
-        showToast('Failed to load time slots', 'error');
+        console.error('Error:', error);
+        showToast('Failed to load slots', 'error');
     } finally {
         showLoading(false);
     }
