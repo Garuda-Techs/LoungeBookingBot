@@ -102,10 +102,22 @@ header h1 {
 }
 
 /* --- CALENDAR --- */
-.calendar-header h2, #currentMonth {
+.calendar-header {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+#currentMonth {
     font-size: 20px;
     color: #000000 !important;
     font-weight: 700;
+    flex-grow: 1;
+    text-align: center;
+    margin: 0;
 }
 
 .nav-button {
@@ -117,19 +129,21 @@ header h1 {
     border-radius: 50%;
     font-size: 24px;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1; /* Keeps arrows vertically centered */
 }
 
 .calendar {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
     gap: 8px;
+    width: 100%;
 }
 
 .calendar-day {
-    aspect-ratio: 1;
+    aspect-ratio: 1 / 1; /* Keeps days as perfect squares */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -137,12 +151,25 @@ header h1 {
     border-radius: 8px;
     cursor: pointer;
     font-size: 14px;
+    background: white;
+}
+
+.calendar-day.header {
+    border: none;
+    font-weight: 700;
+    color: #64748b; /* Muted color for Sun-Sat */
+    cursor: default;
 }
 
 .calendar-day.selected {
     background: var(--primary-color) !important;
     color: #000000 !important;
     font-weight: 700;
+}
+
+.calendar-day.disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
 }
 
 /* --- TIME SLOTS --- */

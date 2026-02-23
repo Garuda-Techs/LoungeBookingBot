@@ -137,7 +137,7 @@ function renderCalendar() {
         if (dateObj < today) {
             dayElement.classList.add('disabled');
         } else {
-            dayElement.addEventListener('click', () => selectDate(dateObj));
+            dayElement.onclick = () => selectDate(dateObj);
         }
         
         if (selectedDate && dateObj.getTime() === selectedDate.getTime()) {
