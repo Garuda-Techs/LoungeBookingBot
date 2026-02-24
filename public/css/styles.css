@@ -284,3 +284,92 @@ header h1 {
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- CUSTOM MODAL STYLING --- */
+.modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px); /* Frosted glass effect */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.modal-content {
+    background: var(--bg-color);
+    padding: 24px;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    position: relative;
+    animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.close-btn {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    font-size: 28px;
+    color: #94a3b8;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.close-btn:hover {
+    color: var(--danger-color);
+}
+
+.modal-content h3 {
+    margin-bottom: 20px;
+    padding-right: 30px;
+    color: var(--text-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 12px;
+}
+
+/* This creates the 2-line layout */
+.info-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+    font-size: 15px;
+}
+
+.info-icon {
+    font-size: 18px;
+    line-height: 1.4;
+}
+
+.info-content {
+    line-height: 1.4;
+    word-break: break-word; /* Stops long notes from overflowing */
+}
+
+.info-content strong {
+    color: #475569;
+    font-weight: 600;
+    margin-right: 4px;
+}
+
+/* Custom Telegram Link Styling */
+.tg-link {
+    color: #0284c7; /* A nice, readable blue */
+    text-decoration: none;
+    font-weight: 700;
+    transition: all 0.2s ease;
+}
+
+.tg-link:hover {
+    color: #0369a1; /* Darker blue when tapped/hovered */
+    text-decoration: underline;
+}

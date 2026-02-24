@@ -218,18 +218,24 @@ function displayTimeSlots(available, bookedDetails) {
             slotElement.classList.add('booked');
             slotElement.onclick = () => {
                 const fullName = [detail.first_name, detail.last_name].filter(Boolean).join(' ');
-                const handle = detail.telegram_username ? `@${detail.telegram_username}` : '';
-                const displayName = handle && fullName
-                    ? `${handle} (${fullName})`
-                    : handle || fullName || 'Unknown user';
-
-                const info = `👤 Reserved by: ${displayName}\n📝 Note: ${detail.notes || 'No notes'}`;
+                const handleRaw = detail.telegram_username;
                 
-                if (window.Telegram?.WebApp)
-                    window.Telegram.WebApp.showAlert(info);
-                else
-                    alert(info);
+                // Create a clickable link if they have a handle
+                const handleLink = handleRaw 
+                    ? `<a href="https://t.me/${handleRaw}" target="_blank" class="tg-link">@${handleRaw}</a>` 
+                    : '';
+                
+                // Format exactly as: @handle (name)
+                const displayNameHTML = handleLink && fullName
+                    ? `${handleLink} (${fullName})`
+                    : handleLink || fullName || 'Unknown user';
+
+                const note = detail.notes || 'No notes';
+                
+                showInfoModal(displayNameHTML, note, slot);
             };
+        }
+
         } else if (isPastSlot) {
             // grey out past time slots
             slotElement.classList.add('disabled');
@@ -489,3 +495,27 @@ function showToast(message, type = 'success') {
     toast.classList.remove('hidden');
     setTimeout(() => toast.classList.add('hidden'), 3000);
 }
+
+// --- Modal Logic ---
+function showInfoModal(displayNameHTML, note, time) {
+    document.getElementById('infoModalTitle').textContent = `Reserved at ${time}`;
+    
+    // CHANGED to innerHTML so the <a> tag turns into a real link!
+    document.getElementById('infoModalUser').innerHTML = displayNameHTML; 
+    
+    document.getElementById('infoModalNote').textContent = note;
+    
+    document.getElementById('infoModal').classList.remove('hidden');
+}
+
+// Close modal when X is clicked
+document.getElementById('closeInfoModal').addEventListener('click', () => {
+    document.getElementById('infoModal').classList.add('hidden');
+});
+
+// Close modal when tapping the dark background outside the white box
+document.getElementById('infoModal').addEventListener('click', (e) => {
+    if(e.target.id === 'infoModal') {
+        document.getElementById('infoModal').classList.add('hidden');
+    }
+});

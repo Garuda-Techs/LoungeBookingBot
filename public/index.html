@@ -69,6 +69,27 @@
 
         <div id="toast" class="toast hidden"></div>
     </div>
+    
+    <div id="infoModal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close-btn" id="closeInfoModal">&times;</span>
+                <h3 id="infoModalTitle">Booking Details</h3>
+                
+                <div class="info-line">
+                    <span class="info-icon">👤</span>
+                    <div class="info-content">
+                        <strong>Reserved by:</strong> <span id="infoModalUser"></span>
+                    </div>
+                </div>
+                
+                <div class="info-line">
+                    <span class="info-icon">📝</span>
+                    <div class="info-content">
+                        <strong>Notes:</strong> <span id="infoModalNote"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
     <script src="/js/app.js"></script>
 </body>
