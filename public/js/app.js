@@ -508,14 +508,18 @@ function showInfoModal(displayNameHTML, note, time) {
     document.getElementById('infoModal').classList.remove('hidden');
 }
 
-// Close modal when X is clicked
-document.getElementById('closeInfoModal').addEventListener('click', () => {
-    document.getElementById('infoModal').classList.add('hidden');
-});
+// BULLETPROOF LISTENERS: Only attach if the elements exist
+const closeBtn = document.getElementById('closeInfoModal');
+const infoModal = document.getElementById('infoModal');
 
-// Close modal when tapping the dark background outside the white box
-document.getElementById('infoModal').addEventListener('click', (e) => {
-    if(e.target.id === 'infoModal') {
-        document.getElementById('infoModal').classList.add('hidden');
-    }
-});
+if (closeBtn && infoModal) {
+    closeBtn.addEventListener('click', () => {
+        infoModal.classList.add('hidden');
+    });
+
+    infoModal.addEventListener('click', (e) => {
+        if(e.target.id === 'infoModal') {
+            infoModal.classList.add('hidden');
+        }
+    });
+}
