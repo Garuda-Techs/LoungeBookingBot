@@ -217,9 +217,18 @@ function displayTimeSlots(available, bookedDetails) {
             const detail = bookedMap.get(slot);
             slotElement.classList.add('booked');
             slotElement.onclick = () => {
-                const info = `👤 Reserved by: ${detail.first_name}\n📝 Note: ${detail.notes || 'No notes'}`;
-                if (window.Telegram?.WebApp) window.Telegram.WebApp.showAlert(info);
-                else alert(info);
+                const fullName = [detail.first_name, detail.last_name].filter(Boolean).join(' ');
+                const handle = detail.telegram_username ? `@${detail.telegram_username}` : '';
+                const displayName = handle && fullName
+                    ? `${handle} (${fullName})`
+                    : handle || fullName || 'Unknown user';
+
+                const info = `👤 Reserved by: ${displayName}\n📝 Note: ${detail.notes || 'No notes'}`;
+                
+                if (window.Telegram?.WebApp)
+                    window.Telegram.WebApp.showAlert(info);
+                else
+                    alert(info);
             };
         } else if (isPastSlot) {
             // grey out past time slots

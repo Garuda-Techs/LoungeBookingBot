@@ -51,7 +51,7 @@ router.get('/available/:date', async (req, res) => {
     
     // UPDATED QUERY: JOIN with users to get the name and include notes
     const sql = `
-      SELECT b.time_slot, b.notes, u.first_name 
+      SELECT b.time_slot, b.notes, u.first_name, u.last_name, u.telegram_username 
       FROM bookings b
       JOIN users u ON b.user_id = u.id
       WHERE b.date = ? AND b.lounge_level = ? AND b.status = 'active'
