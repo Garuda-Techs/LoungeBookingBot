@@ -234,7 +234,6 @@ function displayTimeSlots(available, bookedDetails) {
                 
                 showInfoModal(displayNameHTML, note, slot);
             };
-        }
 
         } else if (isPastSlot) {
             // grey out past time slots
