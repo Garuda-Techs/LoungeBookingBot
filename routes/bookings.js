@@ -10,21 +10,24 @@ async function getOrCreateUser(telegramUser) {
   return new Promise((resolve, reject) => {
     const database = db.getDb();
     
+    // --- THE FIX: Clean the ID --- PREVENT INT OVERFLOW BY CONVERTING TO STRING AND SPLITTING
+    const cleanId = String(telegramUser.id).split('.')[0];
+    
     database.get(
       'SELECT * FROM users WHERE telegram_id = ?',
-      [telegramUser.id],
+      [cleanId], // Use cleaned ID
       (err, row) => {
         if (err) return reject(err);
         if (row) return resolve(row);
         
         database.run(
           'INSERT INTO users (telegram_id, telegram_username, first_name, last_name) VALUES (?, ?, ?, ?)',
-          [telegramUser.id, telegramUser.username, telegramUser.first_name, telegramUser.last_name],
+          [cleanId, telegramUser.username, telegramUser.first_name, telegramUser.last_name], // Use cleaned ID
           function(err) {
             if (err) return reject(err);
             resolve({
               id: this.lastID,
-              telegram_id: telegramUser.id,
+              telegram_id: cleanId,
               telegram_username: telegramUser.username,
               first_name: telegramUser.first_name,
               last_name: telegramUser.last_name
@@ -144,7 +147,8 @@ router.post('/', async (req, res) => {
 // Get user's bookings (displays all levels)
 router.get('/user/:telegramId', async (req, res) => {
   try {
-    const { telegramId } = req.params;
+    // --- THE FIX: Clean the ID from params ---
+    const cleanId = String(req.params.telegramId).split('.')[0];
     const database = db.getDb();
     
     database.all(
@@ -152,7 +156,7 @@ router.get('/user/:telegramId', async (req, res) => {
        JOIN users u ON b.user_id = u.id 
        WHERE u.telegram_id = ? AND b.status = ?
        ORDER BY b.date, b.time_slot`,
-      [telegramId, 'active'],
+      [cleanId, 'active'], // Use cleaned ID
       (err, rows) => {
         if (err) return res.status(500).json({ error: 'Database error' });
         res.json(rows);
@@ -175,12 +179,15 @@ router.delete('/:id', async (req, res) => {
     }
 
     const database = db.getDb();
-    
+
+    // --- THE FIX: Clean the ID from body ---
+    const cleanId = String(req.body.telegramId).split('.')[0];
+
     // Using a subquery to verify the user owns the booking before 'deleting' (updating status)
     database.run(
       `UPDATE bookings SET status = 'cancelled' 
        WHERE id = ? AND user_id IN (SELECT id FROM users WHERE telegram_id = ?)`,
-      [id, telegramId],
+      [id, cleanId],
       function(err) {
         if (err) {
           console.error('Database error during cancellation:', err);

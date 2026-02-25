@@ -281,7 +281,7 @@ function showBookingForm() {
     if (confirmLevel) confirmLevel.textContent = selectedLevel;
     bookingDate.textContent = formatDate(selectedDate);
     bookingTime.textContent = selectedTimeSlots.join(', '); 
-
+   
     bookingForm.classList.remove('hidden');
     bookingForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -356,7 +356,8 @@ async function confirmBooking() {
 async function loadMyBookings() {
     if (!telegramUser) return;
     try {
-        const response = await fetch(`/api/bookings/user/${telegramUser.id}`);
+        const safeId = String(telegramUser.id).split('.')[0];
+        const response = await fetch(`/api/bookings/user/${safeId}`);
         if (!response.ok) throw new Error('Failed to load');
         const bookings = await response.json();
         displayMyBookings(bookings);
