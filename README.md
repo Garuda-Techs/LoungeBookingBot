@@ -152,6 +152,8 @@ Request body example:
 - **Multi-Level & Multi-Slot:** Backend and frontend support selecting lounge level (9/10/11) and booking multiple consecutive slots.
 - **Int64 Sanitization:** Fixed a critical bug where massive Telegram IDs exceeded the 32-bit integer limit, ensuring flawless profile matching.
 - **Proxy Configuration:** Added Express `app.set('trust proxy', 1)` to fix rate-limiter IP blocking behind cloud proxies.
+- **Admin UI**: Added a dynamic "Admin: Cancel" button to the calendar modal that only renders for authorized users.
+- **Dynamic Admin Management**: Admins can now be added or removed instantly via Railway environment variables without redeploying code.
 
 ---
 
