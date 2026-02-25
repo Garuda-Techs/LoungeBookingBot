@@ -119,7 +119,6 @@ bot.on('callback_query', (query) => {
 • Cancel bookings if needed
 • Mobile-friendly interface
 
-Need assistance? Contact the lounge administrator.
     `;
     
     bot.sendMessage(chatId, helpMessage, { parse_mode: 'Markdown' });

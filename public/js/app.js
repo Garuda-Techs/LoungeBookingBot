@@ -9,6 +9,7 @@ let currentDate = new Date();
 let selectedDate = null;
 let selectedTimeSlots = []; 
 let selectedLevel = 9; // Default floor
+let isUserAdmin = false; 
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
@@ -22,6 +23,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (telegramUser) {
             displayUserInfo();
+            try {
+                const safeId = String(telegramUser.id).split('.')[0];
+                const adminRes = await fetch(`/api/bookings/is-admin/${safeId}`);
+                if (adminRes.ok) {
+                    const adminData = await adminRes.json();
+                    isUserAdmin = adminData.isAdmin;
+                }
+            } catch (err) {
+                console.error('Failed to check admin status', err);
+            }
         }
     } else {
         // Fallback for testing without Telegram
@@ -232,7 +243,7 @@ function displayTimeSlots(available, bookedDetails) {
 
                 const note = detail.notes || 'No notes';
                 
-                showInfoModal(displayNameHTML, note, slot);
+                showInfoModal(displayNameHTML, note, slot, detail.id);
             };
 
         } else if (isPastSlot) {
@@ -497,15 +508,36 @@ function showToast(message, type = 'success') {
 }
 
 // --- Modal Logic ---
-function showInfoModal(displayNameHTML, note, time) {
+function showInfoModal(displayNameHTML, note, time, bookingId) {
     document.getElementById('infoModalTitle').textContent = `Reserved at ${time}`;
-    
-    // CHANGED to innerHTML so the <a> tag turns into a real link!
     document.getElementById('infoModalUser').innerHTML = displayNameHTML; 
-    
     document.getElementById('infoModalNote').textContent = note;
     
-    document.getElementById('infoModal').classList.remove('hidden');
+    const infoModal = document.getElementById('infoModal');
+
+    // Remove the old existing button if there is one
+    const existingBtn = document.getElementById('adminDeleteBtn');
+    if (existingBtn) existingBtn.remove();
+
+    // Use our new global variable instead of a hardcoded array!
+    if (isUserAdmin && bookingId) {
+        const modalContent = document.querySelector('.modal-content');
+        const adminBtn = document.createElement('button');
+        adminBtn.id = 'adminDeleteBtn';
+        adminBtn.className = 'btn btn-danger';
+        adminBtn.style.marginTop = '15px';
+        adminBtn.style.width = '100%';
+        adminBtn.textContent = 'Admin: Cancel This Booking';
+        
+        adminBtn.onclick = () => {
+            handleDeleteBooking(bookingId);
+            infoModal.classList.add('hidden');
+        };
+        
+        modalContent.appendChild(adminBtn);
+    }
+
+    infoModal.classList.remove('hidden');
 }
 
 // BULLETPROOF LISTENERS: Only attach if the elements exist

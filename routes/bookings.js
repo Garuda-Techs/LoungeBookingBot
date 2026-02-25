@@ -54,7 +54,7 @@ router.get('/available/:date', async (req, res) => {
     
     // UPDATED QUERY: JOIN with users to get the name and include notes
     const sql = `
-      SELECT b.time_slot, b.notes, u.first_name, u.last_name, u.telegram_username 
+      SELECT b.id, b.time_slot, b.notes, u.first_name, u.last_name, u.telegram_username 
       FROM bookings b
       JOIN users u ON b.user_id = u.id
       WHERE b.date = ? AND b.lounge_level = ? AND b.status = 'active'
@@ -167,41 +167,65 @@ router.get('/user/:telegramId', async (req, res) => {
   }
 });
 
-// Cancel a booking
+// Check if a user is an admin
+router.get('/is-admin/:telegramId', (req, res) => {
+    try {
+        const cleanId = String(req.params.telegramId).split('.')[0];
+        const adminEnv = process.env.ADMIN_IDS || '1949513693';
+        const ADMIN_IDS = adminEnv.split(',').map(id => id.trim());
+        
+        res.json({ isAdmin: ADMIN_IDS.includes(cleanId) });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Cancel a booking (With Admin Override)
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    // Ensure telegramId is being pulled from the body
     const { telegramId } = req.body;
 
     if (!telegramId) {
-      return res.status(400).json({ error: 'User authorization (telegramId) is required to cancel.' });
+      return res.status(400).json({ error: 'User authorization required.' });
     }
 
     const database = db.getDb();
+    const cleanId = String(telegramId).split('.')[0];
+    
+    // Fetch the list of admins from Railway, fallback to just your ID if missing
+    const adminEnv = process.env.ADMIN_IDS || '1949513693';
+    // Convert "1949513693,123456789" into an array and clean up spaces
+    const ADMIN_IDS = adminEnv.split(',').map(adminId => adminId.trim());
+    
+    const isAdmin = ADMIN_IDS.includes(cleanId);
 
-    // --- THE FIX: Clean the ID from body ---
-    const cleanId = String(req.body.telegramId).split('.')[0];
+    let sql;
+    let params;
 
-    // Using a subquery to verify the user owns the booking before 'deleting' (updating status)
-    database.run(
-      `UPDATE bookings SET status = 'cancelled' 
-       WHERE id = ? AND user_id IN (SELECT id FROM users WHERE telegram_id = ?)`,
-      [id, cleanId],
-      function(err) {
-        if (err) {
-          console.error('Database error during cancellation:', err);
-          return res.status(500).json({ error: 'Database error' });
-        }
-        
-        // If this.changes is 0, it means the ID didn't exist OR the user didn't own it
-        if (this.changes === 0) {
-          return res.status(404).json({ error: 'Booking not found or unauthorized.' });
-        }
-        
-        res.json({ message: 'Booking cancelled successfully' });
+    if (isAdmin) {
+        // God Mode: Admin can cancel ANY booking just by its ID
+        sql = `UPDATE bookings SET status = 'cancelled' WHERE id = ?`;
+        params = [id];
+    } else {
+        // Normal Mode: Users can only cancel if they own it
+        sql = `UPDATE bookings SET status = 'cancelled' 
+               WHERE id = ? AND user_id IN (SELECT id FROM users WHERE telegram_id = ?)`;
+        params = [id, cleanId];
+    }
+
+    database.run(sql, params, function(err) {
+      if (err) {
+        console.error('Database error during cancellation:', err);
+        return res.status(500).json({ error: 'Database error' });
       }
-    );
+      
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Booking not found or unauthorized.' });
+      }
+      
+      res.json({ message: 'Booking cancelled successfully' });
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
