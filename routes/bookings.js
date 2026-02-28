@@ -145,6 +145,7 @@ router.post('/', async (req, res) => {
 });
 
 // Get upcoming bookings for a specific level (Current Week + Next Week up to Sunday)
+// Get upcoming bookings for a specific level (Current Week + Next Week up to Sunday)
 router.get('/upcoming/:level', (req, res) => {
   try {
     const level = parseInt(req.params.level);
@@ -152,20 +153,21 @@ router.get('/upcoming/:level', (req, res) => {
       return res.status(400).json({ error: 'Invalid lounge level.' });
     }
 
-    // --- CALCULATE THE CUTOFF DATE (Sunday of Next Week) ---
     const today = new Date();
-    
-    // JS getDay() returns 0 for Sunday. We convert it to 7 so Monday=1, Sunday=7.
+
+    // --- 1. THE FIX: Create a bulletproof "Today" string in Node.js ---
+    const todayYear = today.getFullYear();
+    const todayMonth = String(today.getMonth() + 1).padStart(2, '0');
+    const todayDay = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${todayYear}-${todayMonth}-${todayDay}`;
+
+    // --- 2. CALCULATE THE CUTOFF DATE (Sunday of Next Week) ---
     const dayOfWeek = today.getDay() === 0 ? 7 : today.getDay(); 
-    
-    // Calculate days remaining until THIS Sunday
     const daysUntilThisSunday = 7 - dayOfWeek;
     
     const endOfNextWeek = new Date(today);
-    // Add days to get to this Sunday, then add exactly 7 more days for next Sunday
     endOfNextWeek.setDate(today.getDate() + daysUntilThisSunday + 7);
     
-    // Format to YYYY-MM-DD safely
     const year = endOfNextWeek.getFullYear();
     const month = String(endOfNextWeek.getMonth() + 1).padStart(2, '0');
     const day = String(endOfNextWeek.getDate()).padStart(2, '0');
@@ -173,19 +175,20 @@ router.get('/upcoming/:level', (req, res) => {
 
     const database = db.getDb(); 
     
-    // Fetch bookings up to the cutoff date
+    // --- 3. Pass BOTH Node.js dates to completely bypass SQLite's clock ---
     const sql = `
       SELECT b.date, b.time_slot, u.first_name, u.telegram_username 
       FROM bookings b
       JOIN users u ON b.user_id = u.id
       WHERE b.lounge_level = ? 
-        AND b.date >= date('now', 'localtime') 
+        AND b.date >= ?  /* Replaced date('now', 'localtime') with our todayStr */
         AND b.date <= ? 
         AND b.status = 'active'
       ORDER BY b.date ASC, b.time_slot ASC
     `;
 
-    database.all(sql, [level, cutoffDate], (err, rows) => {
+    // Now passing [level, todayStr, cutoffDate]
+    database.all(sql, [level, todayStr, cutoffDate], (err, rows) => {
       if (err) {
         console.error("Database error fetching upcoming:", err);
         return res.status(500).json({ error: 'Database error' });
