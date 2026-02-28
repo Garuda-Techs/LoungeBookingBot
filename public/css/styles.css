@@ -101,6 +101,94 @@ header h1 {
     border: 1px solid var(--primary-color);
 }
 
+/* --- UPCOMING BOOKINGS --- */
+.upcoming-section {
+    margin: 20px 0;
+    padding: 0; 
+}
+
+.upcoming-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 12px;
+}
+
+.upcoming-scroll-container {
+    display: flex;
+    overflow-x: auto;
+    gap: 12px;
+    padding-bottom: 10px;
+    /* This makes it snap perfectly on mobile */
+    scroll-snap-type: x mandatory; 
+    -webkit-overflow-scrolling: touch; 
+}
+
+/* Custom sleek scrollbar for desktop users */
+.upcoming-scroll-container::-webkit-scrollbar {
+    height: 6px; /* Makes it a thin, elegant line */
+}
+
+.upcoming-scroll-container::-webkit-scrollbar-track {
+    background: transparent; /* Hides the bulky background */
+    margin: 0 10px; /* Keeps the scrollbar from touching the edges */
+}
+
+.upcoming-scroll-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1; /* A nice, subtle grey */
+    border-radius: 10px;
+}
+
+.upcoming-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; /* Darkens slightly when you hover over it */
+}
+
+.upcoming-card {
+    min-width: 140px; /* Forces cards to stay wide enough */
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 12px;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.upcoming-date {
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.upcoming-time {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-color);
+    margin: 4px 0;
+}
+
+.upcoming-user {
+    font-size: 13px;
+    color: #0284c7; /* Matches your tg-link blue */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.empty-state {
+    font-size: 14px;
+    color: #94a3b8;
+    font-style: italic;
+    background: #f8fafc;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px dashed #cbd5e1;
+    width: 100%;
+    text-align: center;
+}
+
 /* --- CALENDAR --- */
 .calendar-header {
     display: flex !important;
