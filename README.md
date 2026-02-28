@@ -6,6 +6,8 @@ A Telegram Mini App for booking time slots at the CAPT Garuda Lounge (Levels 9, 
 
 - 📱 **Telegram Mini App Integration** — Seamless integration with Telegram Mini Apps and `initDataUnsafe` profile autofill.
 - 🏢 **Multi-Level Support** — Independent booking tracks for Level 9, 10, and 11 lounges.
+- 👀 **At-a-Glance Dashboard** — Native-feeling horizontal swipe interface for viewing upcoming bookings by floor.
+- 🧠 **Smart Slot Grouping** — Frontend algorithm automatically merges consecutive 1-hour slots into clean, human-readable blocks (e.g., 12:00 - 15:00).
 - 📅 **Interactive Calendar** — Highlights selection, disables past dates, and prevents invalid ranges.
 - ⏰ **Multi-Slot Selection** — Book multiple consecutive hourly slots in a single transaction.
 - 👤 **User Profile Autofill** — Automatic profile data retrieval from the Telegram web app payload.
@@ -75,19 +77,24 @@ Response sample:
 
 ```json
 {
-  "date": "2026-02-24",
+  "date": "2026-03-15",
   "level": 9,
   "available": ["08:00", "09:00", "10:00"],
   "bookedDetails": [
     {
       "time_slot": "11:00",
-      "first_name": "Gabriel",
-      "telegram_username": "gabrielwan",
+      "first_name": "Alice",
+      "telegram_username": "alice_tg",
       "notes": "Study session"
     }
   ]
 }
 ```
+### Get Upcoming Bookings
+
+`GET /api/bookings/upcoming/:level`
+
+Returns active bookings strictly bounded from the current day to the end of the following calendar week (Sunday).
 
 ### Create Booking
 
@@ -99,9 +106,9 @@ Request body example:
 
 ```json
 {
-  "telegramUser": { "id": "6032579306", "first_name": "Justine" },
+  "telegramUser": { "id": "987654321", "first_name": "Bob" },
   "lounge_level": 9,
-  "date": "2026-02-24",
+  "date": "2026-03-15",
   "timeSlots": ["08:00", "09:00"],
   "notes": "Project meeting"
 }
@@ -123,7 +130,7 @@ Request body example:
 
 ```json
 {
-  "telegramId": "6032579306"
+  "telegramId": "987654321"
 }
 ```
 
@@ -142,18 +149,21 @@ Request body example:
 ## 🌐 Deployment (Railway Recommended)
 
 1. Create and mount a **Volume** at `/app/data` to persist `lounge_bookings.db` across container restarts.
-2. Set the required environment variables in your Railway project settings.
+2. Set the required environment variables in your Railway project settings (including ADMIN_IDS).
 3. Deploy the project and ensure HTTPS is enabled for the generated web app URL (a strict Telegram requirement).
 
 ---
 
 ## ✅ Recent Updates
 
+
 - **Multi-Level & Multi-Slot:** Backend and frontend support selecting lounge level (9/10/11) and booking multiple consecutive slots.
 - **Int64 Sanitization:** Fixed a critical bug where massive Telegram IDs exceeded the 32-bit integer limit, ensuring flawless profile matching.
 - **Proxy Configuration:** Added Express `app.set('trust proxy', 1)` to fix rate-limiter IP blocking behind cloud proxies.
 - **Admin UI**: Added a dynamic "Admin: Cancel" button to the calendar modal that only renders for authorized users.
 - **Dynamic Admin Management**: Admins can now be added or removed instantly via Railway environment variables without redeploying code.
+- **Optimized Dashboard UI**: Added a responsive horizontal-scroll interface for upcoming bookings with custom CSS scroll-snapping.
+- **Smart Data Transformation**: Implemented frontend algorithms to merge consecutive 1-hour database entries into unified UI blocks.
 
 ---
 

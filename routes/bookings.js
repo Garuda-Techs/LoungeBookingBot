@@ -144,6 +144,59 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Get upcoming bookings for a specific level (Current Week + Next Week up to Sunday)
+router.get('/upcoming/:level', (req, res) => {
+  try {
+    const level = parseInt(req.params.level);
+    if (![9, 10, 11].includes(level)) {
+      return res.status(400).json({ error: 'Invalid lounge level.' });
+    }
+
+    // --- CALCULATE THE CUTOFF DATE (Sunday of Next Week) ---
+    const today = new Date();
+    
+    // JS getDay() returns 0 for Sunday. We convert it to 7 so Monday=1, Sunday=7.
+    const dayOfWeek = today.getDay() === 0 ? 7 : today.getDay(); 
+    
+    // Calculate days remaining until THIS Sunday
+    const daysUntilThisSunday = 7 - dayOfWeek;
+    
+    const endOfNextWeek = new Date(today);
+    // Add days to get to this Sunday, then add exactly 7 more days for next Sunday
+    endOfNextWeek.setDate(today.getDate() + daysUntilThisSunday + 7);
+    
+    // Format to YYYY-MM-DD safely
+    const year = endOfNextWeek.getFullYear();
+    const month = String(endOfNextWeek.getMonth() + 1).padStart(2, '0');
+    const day = String(endOfNextWeek.getDate()).padStart(2, '0');
+    const cutoffDate = `${year}-${month}-${day}`;
+
+    const database = db.getDb(); 
+    
+    // Fetch bookings up to the cutoff date
+    const sql = `
+      SELECT b.date, b.time_slot, u.first_name, u.telegram_username 
+      FROM bookings b
+      JOIN users u ON b.user_id = u.id
+      WHERE b.lounge_level = ? 
+        AND b.date >= date('now', 'localtime') 
+        AND b.date <= ? 
+        AND b.status = 'active'
+      ORDER BY b.date ASC, b.time_slot ASC
+    `;
+
+    database.all(sql, [level, cutoffDate], (err, rows) => {
+      if (err) {
+        console.error("Database error fetching upcoming:", err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json(rows);
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get user's bookings (displays all levels)
 router.get('/user/:telegramId', async (req, res) => {
   try {
@@ -171,8 +224,8 @@ router.get('/user/:telegramId', async (req, res) => {
 router.get('/is-admin/:telegramId', (req, res) => {
     try {
         const cleanId = String(req.params.telegramId).split('.')[0];
-        const adminEnv = process.env.ADMIN_IDS || '1949513693';
-        const ADMIN_IDS = adminEnv.split(',').map(id => id.trim());
+        const adminEnv = process.env.ADMIN_IDS || '';
+        const ADMIN_IDS = adminEnv.split(',').filter(id => id.trim()).map(id => id.trim());
         
         res.json({ isAdmin: ADMIN_IDS.includes(cleanId) });
     } catch (error) {
@@ -193,10 +246,8 @@ router.delete('/:id', async (req, res) => {
     const database = db.getDb();
     const cleanId = String(telegramId).split('.')[0];
     
-    // Fetch the list of admins from Railway, fallback to just your ID if missing
-    const adminEnv = process.env.ADMIN_IDS || '1949513693';
-    // Convert "1949513693,123456789" into an array and clean up spaces
-    const ADMIN_IDS = adminEnv.split(',').map(adminId => adminId.trim());
+    const adminEnv = process.env.ADMIN_IDS || '';
+    const ADMIN_IDS = adminEnv.split(',').filter(id => id.trim()).map(id => id.trim());
     
     const isAdmin = ADMIN_IDS.includes(cleanId);
 

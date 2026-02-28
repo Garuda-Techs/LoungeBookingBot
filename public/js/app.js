@@ -14,35 +14,46 @@ let isUserAdmin = false;
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize Telegram Web App
-    if (tg) {
+    // Check if the user data actually exists inside Telegram
+    if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
         tg.ready();
         tg.expand();
         
         // Get Telegram user info
-        telegramUser = tg.initDataUnsafe?.user;
+        telegramUser = tg.initDataUnsafe.user;
         
-        if (telegramUser) {
-            displayUserInfo();
-            try {
-                const safeId = String(telegramUser.id).split('.')[0];
-                const adminRes = await fetch(`/api/bookings/is-admin/${safeId}`);
-                if (adminRes.ok) {
-                    const adminData = await adminRes.json();
-                    isUserAdmin = adminData.isAdmin;
-                }
-            } catch (err) {
-                console.error('Failed to check admin status', err);
+        displayUserInfo();
+        try {
+            const safeId = String(telegramUser.id).split('.')[0];
+            const adminRes = await fetch(`/api/bookings/is-admin/${safeId}`);
+            if (adminRes.ok) {
+                const adminData = await adminRes.json();
+                isUserAdmin = adminData.isAdmin;
             }
+        } catch (err) {
+            console.error('Failed to check admin status', err);
         }
     } else {
-        // Fallback for testing without Telegram
+        // Fallback for testing on Desktop/Chrome without Telegram
+        console.log("Running in local browser mode!");
         telegramUser = {
-            id: 'test_user',
+            id: '1949513693', // Replaced with your real ID so you get Admin powers locally!
             first_name: 'Gabriel',
             last_name: 'Wan',
             username: 'gabrielwan'
         };
         displayUserInfo();
+        
+        // Still check admin status for the local fallback user
+        try {
+            const adminRes = await fetch(`/api/bookings/is-admin/${telegramUser.id}`);
+            if (adminRes.ok) {
+                const adminData = await adminRes.json();
+                isUserAdmin = adminData.isAdmin;
+            }
+        } catch (err) {
+            console.error('Failed to check local admin status', err);
+        }
     }
     
     // --- 1. Level Switcher Logic ---
@@ -69,6 +80,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (selectedDate) {
                 loadTimeSlots(selectedDate);
             }
+
+            // Update the horizontal scrolling list for the new floor
+            loadUpcomingBookings(selectedLevel);
         });
     });
 
@@ -77,6 +91,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Load user's bookings
     await loadMyBookings();
+
+    // Load the upcoming bookings for the default floor (Level 9)
+    await loadUpcomingBookings(selectedLevel);
     
     // Global Event listeners
     document.getElementById('prevMonth').addEventListener('click', () => {
@@ -348,6 +365,8 @@ async function confirmBooking() {
         
         await loadTimeSlots(selectedDate);
         await loadMyBookings();
+        // Refresh the upcoming list so the new booking appears
+        await loadUpcomingBookings(selectedLevel);
         
         if (tg) {
             tg.showPopup({
@@ -468,7 +487,8 @@ async function handleDeleteBooking(bookingId) {
         // 2. PARALLEL REFRESH: Refresh everything at once instead of one-by-one
         Promise.all([
             loadMyBookings(),
-            selectedDate ? loadTimeSlots(selectedDate) : Promise.resolve()
+            selectedDate ? loadTimeSlots(selectedDate) : Promise.resolve(),
+            loadUpcomingBookings(selectedLevel) // <--- ADD THIS LINE!
         ]);
 
     } catch (error) {
@@ -478,6 +498,98 @@ async function handleDeleteBooking(bookingId) {
             card.style.pointerEvents = 'auto';
         }
         showToast(error.message, 'error');
+    }
+}
+
+// --- Upcoming Bookings Logic ---
+async function loadUpcomingBookings(level) {
+    const container = document.getElementById('upcoming-container');
+    const title = document.getElementById('upcoming-title');
+    
+    if (!container || !title) return;
+
+    title.innerText = `Upcoming on Level ${level}`;
+    container.innerHTML = `<p class="empty-state">Loading schedule...</p>`;
+
+    try {
+        const response = await fetch(`/api/bookings/upcoming/${level}`);
+        if (!response.ok) throw new Error('Failed to load upcoming bookings');
+        
+        const rawBookings = await response.json();
+
+        if (rawBookings.length === 0) {
+            container.innerHTML = `<p class="empty-state">No upcoming bookings. Be the first!</p>`;
+            return;
+        }
+
+        // --- THE MAGIC: Group Consecutive Bookings ---
+        const groupedBookings = [];
+        
+        // Helper to add 1 hour to a time string (e.g., "12:00" -> "13:00")
+        const getEndTime = (timeStr) => {
+            const hour = parseInt(timeStr.split(':')[0]);
+            return `${String(hour + 1).padStart(2, '0')}:00`;
+        };
+
+        // Start the first group
+        let currentGroup = { 
+            ...rawBookings[0], 
+            end_time: getEndTime(rawBookings[0].time_slot) 
+        };
+
+        for (let i = 1; i < rawBookings.length; i++) {
+            const nextBooking = rawBookings[i];
+            
+            // Extract the hour numbers for comparison
+            const currentEndHour = parseInt(currentGroup.end_time.split(':')[0]);
+            const nextStartHour = parseInt(nextBooking.time_slot.split(':')[0]);
+
+            // Check if they should be merged
+            const isSameUser = currentGroup.telegram_username === nextBooking.telegram_username 
+                            && currentGroup.first_name === nextBooking.first_name;
+            const isSameDate = currentGroup.date === nextBooking.date;
+            const isConsecutive = currentEndHour === nextStartHour;
+
+            if (isSameUser && isSameDate && isConsecutive) {
+                // Extend the current group's end time
+                currentGroup.end_time = getEndTime(nextBooking.time_slot);
+            } else {
+                // Save the current group and start a new one
+                groupedBookings.push(currentGroup);
+                currentGroup = { 
+                    ...nextBooking, 
+                    end_time: getEndTime(nextBooking.time_slot) 
+                };
+            }
+        }
+        // Don't forget to push the very last group!
+        groupedBookings.push(currentGroup);
+
+
+        // --- DRAW THE CARDS ---
+        container.innerHTML = ''; 
+        groupedBookings.forEach(booking => {
+            const card = document.createElement('div');
+            card.className = 'upcoming-card';
+            
+            const [y, m, d] = booking.date.split('-');
+            const dateObj = new Date(y, m - 1, d);
+            const dateString = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+            const displayName = booking.first_name || booking.telegram_username || 'User';
+
+            // Now we display start_time AND end_time!
+            card.innerHTML = `
+                <div class="upcoming-date">${dateString}</div>
+                <div class="upcoming-time">${booking.time_slot} - ${booking.end_time}</div>
+                <div class="upcoming-user">👤 ${displayName}</div>
+            `;
+            container.appendChild(card);
+        });
+
+    } catch (error) {
+        console.error("Failed to load upcoming bookings", error);
+        container.innerHTML = `<p class="empty-state">Error loading schedule.</p>`;
     }
 }
 
