@@ -336,6 +336,11 @@ header h1 {
     font-size: 14px;
     resize: none;
     transition: all 0.2s;
+    
+    /* --- FOR MOBILE CURSORS --- */
+    -webkit-user-select: text !important;
+    user-select: text !important;
+    caret-color: #475569 !important; /* Premium slate-grey cursor */
 }
 
 #bookingNotes:focus {
