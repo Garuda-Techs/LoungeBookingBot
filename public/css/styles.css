@@ -132,30 +132,34 @@ header h1 {
     display: flex;
     overflow-x: auto;
     gap: 12px;
-    padding-bottom: 10px;
+    padding-bottom: 12px; /* Gave the scrollbar more room to breathe */
     scroll-snap-type: x mandatory; 
     -webkit-overflow-scrolling: touch; 
 }
 
+/* --- MOBILE SCROLLBAR --- */
 .upcoming-scroll-container::-webkit-scrollbar {
-    height: 8px !important; 
-    width: 8px !important; 
-    background-color: transparent !important;
-    display: block !important; 
+    height: 6px !important; /* Slimmer mobile profile */
     -webkit-appearance: none !important;
+    display: block !important;
 }
 
+/* Faint grey track to render the scrollbar */
 .upcoming-scroll-container::-webkit-scrollbar-track {
-    background: transparent !important; 
+    background: #f1f5f9 !important; 
+    border-radius: 10px !important;
+    margin: 0 4px;
 }
 
+/* Darker thumb so it's clearly visible against the track */
 .upcoming-scroll-container::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1 !important; 
+    background-color: #94a3b8 !important; 
     border-radius: 10px !important;
 }
 
-.upcoming-scroll-container::-webkit-scrollbar-thumb:hover {
-    background-color: #94a3b8 !important; 
+/* Darkens when the user actively drags it */
+.upcoming-scroll-container::-webkit-scrollbar-thumb:active {
+    background-color: #64748b !important; 
 }
 
 .upcoming-card {

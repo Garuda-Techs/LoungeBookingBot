@@ -71,8 +71,6 @@ bot.onText(/\/help/, (msg) => {
 /start - Start the bot
 /book - Open booking app
 /help - Show this help message
-
-Need assistance? Contact the lounge administrator.
   `;
   
   bot.sendMessage(chatId, helpMessage, { parse_mode: 'Markdown' });
