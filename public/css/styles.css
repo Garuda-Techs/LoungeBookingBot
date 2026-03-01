@@ -46,6 +46,20 @@ header h1 {
     font-size: 16px;
 }
 
+/* --- HIDE REDUNDANT DATE HEADER --- */
+#selectedDateInfo {
+    display: none !important;
+}
+
+/* --- SECTION HEADERS TYPOGRAPHY FIX --- */
+.time-slots-section h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-top: 8px;
+    margin-bottom: 12px;
+}
+
 /* User Info Banner */
 .user-info {
     background: #fef9c3; 
@@ -119,32 +133,33 @@ header h1 {
     overflow-x: auto;
     gap: 12px;
     padding-bottom: 10px;
-    /* This makes it snap perfectly on mobile */
     scroll-snap-type: x mandatory; 
     -webkit-overflow-scrolling: touch; 
 }
 
-/* Custom sleek scrollbar for desktop users */
 .upcoming-scroll-container::-webkit-scrollbar {
-    height: 6px; /* Makes it a thin, elegant line */
+    height: 8px !important; 
+    width: 8px !important; 
+    background-color: transparent !important;
+    display: block !important; 
+    -webkit-appearance: none !important;
 }
 
 .upcoming-scroll-container::-webkit-scrollbar-track {
-    background: transparent; /* Hides the bulky background */
-    margin: 0 10px; /* Keeps the scrollbar from touching the edges */
+    background: transparent !important; 
 }
 
 .upcoming-scroll-container::-webkit-scrollbar-thumb {
-    background: #cbd5e1; /* A nice, subtle grey */
-    border-radius: 10px;
+    background-color: #cbd5e1 !important; 
+    border-radius: 10px !important;
 }
 
 .upcoming-scroll-container::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8; /* Darkens slightly when you hover over it */
+    background-color: #94a3b8 !important; 
 }
 
 .upcoming-card {
-    min-width: 140px; /* Forces cards to stay wide enough */
+    min-width: 140px; 
     background: #ffffff;
     border: 1px solid var(--border-color);
     border-radius: 12px;
@@ -171,7 +186,7 @@ header h1 {
 
 .upcoming-user {
     font-size: 13px;
-    color: #0284c7; /* Matches your tg-link blue */
+    color: #0284c7; 
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -208,19 +223,25 @@ header h1 {
     margin: 0;
 }
 
+/* Subtle navigation arrows */
 .nav-button {
-    background: var(--primary-color);
-    color: #000000;
+    background: transparent;
+    color: #64748b;
     border: none;
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    font-size: 24px;
+    font-size: 28px;
     cursor: pointer;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    line-height: 1; /* Keeps arrows vertically centered */
+    transition: all 0.2s;
+}
+
+.nav-button:hover, .nav-button:active {
+    background: #f1f5f9;
+    color: #000000;
 }
 
 .calendar {
@@ -231,7 +252,7 @@ header h1 {
 }
 
 .calendar-day {
-    aspect-ratio: 1 / 1; /* Keeps days as perfect squares */
+    aspect-ratio: 1 / 1; 
     display: flex;
     align-items: center;
     justify-content: center;
@@ -245,7 +266,7 @@ header h1 {
 .calendar-day.header {
     border: none;
     font-weight: 700;
-    color: #64748b; /* Muted color for Sun-Sat */
+    color: #64748b; 
     cursor: default;
 }
 
@@ -268,13 +289,17 @@ header h1 {
 }
 
 .time-slot {
-    padding: 12px;
+    padding: 10px 4px; 
     border: 2px solid var(--border-color);
     border-radius: 10px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.2s;
-    font-weight: 600;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+    
+    font-weight: 500; /* Medium weight: structural but not bulky */
+    font-size: 14px;  /* Bumped back up to standard mobile readable size */
+    
+    color: #475569; /* Keeping the sleek grey instead of harsh black */
     background: white;
 }
 
@@ -284,13 +309,12 @@ header h1 {
     border-color: var(--secondary-color);
 }
 
-/* UPDATED: Booked slots now look interactive for Notes transparency */
 .time-slot.booked {
     background: #f1f5f9;
     color: #94a3b8;
-    cursor: pointer;          /* Shows it can be clicked */
+    cursor: pointer;          
     border: 1px dashed #cbd5e1;
-    text-decoration: none;    /* Removed line-through */
+    text-decoration: none;    
 }
 
 .time-slot.disabled {
@@ -330,6 +354,48 @@ header h1 {
     box-shadow: var(--shadow);
 }
 
+/* Fixes the heavy text and spacing inside the form */
+.booking-form h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text-color);
+}
+
+.booking-form p {
+    font-size: 15px;
+    margin-bottom: 10px;
+    color: #64748b; 
+}
+
+.booking-form p strong {
+    color: #000000; 
+    font-weight: 600; 
+    margin-left: 4px; 
+}
+
+/* Puts the Cancel and Confirm buttons side-by-side */
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+#cancelBooking {
+    background: #f1f5f9;
+    color: #64748b;
+    flex: 1; 
+}
+
+#cancelBooking:active {
+    background: #e2e8f0;
+}
+
+#confirmBooking {
+    flex: 2; 
+}
+
+/* Base button styles (Kept exactly as they were!) */
 .btn {
     padding: 14px;
     border: none;
@@ -348,6 +414,80 @@ header h1 {
 .btn-danger {
     background: var(--danger-color);
     color: white;
+}
+
+/* --- MY BOOKINGS SECTION --- */
+.my-bookings-section h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 12px;
+}
+
+.my-bookings {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.booking-card {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+    transition: opacity 0.2s ease;
+}
+
+.booking-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0px; 
+}
+
+.booking-card-date {
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.booking-card-time {
+    font-weight: 700;
+    color: #000000;
+    background: var(--primary-color);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 14px;
+}
+
+.booking-card-notes {
+    font-size: 14px;
+    color: #64748b;
+    margin-bottom: 0px; 
+}
+
+.booking-card-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px; 
+}
+
+.booking-card-actions .btn {
+    padding: 6px 14px;
+    font-size: 13px;
+    width: auto; 
+}
+
+.booking-card-actions .btn-danger {
+    background: transparent;
+    color: var(--danger-color);
+    border: 1px solid var(--danger-color);
+    transition: all 0.2s;
+}
+
+.booking-card-actions .btn-danger:active {
+    background: #fef2f2; 
 }
 
 /* --- MISC --- */
@@ -378,7 +518,7 @@ header h1 {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(4px); /* Frosted glass effect */
+    backdrop-filter: blur(4px); 
     display: flex;
     align-items: center;
     justify-content: center;
@@ -424,7 +564,6 @@ header h1 {
     padding-bottom: 12px;
 }
 
-/* This creates the 2-line layout */
 .info-line {
     display: flex;
     align-items: flex-start;
@@ -440,7 +579,7 @@ header h1 {
 
 .info-content {
     line-height: 1.4;
-    word-break: break-word; /* Stops long notes from overflowing */
+    word-break: break-word; 
 }
 
 .info-content strong {
@@ -451,13 +590,26 @@ header h1 {
 
 /* Custom Telegram Link Styling */
 .tg-link {
-    color: #0284c7; /* A nice, readable blue */
+    color: #0284c7; 
     text-decoration: none;
     font-weight: 700;
     transition: all 0.2s ease;
 }
 
 .tg-link:hover {
-    color: #0369a1; /* Darker blue when tapped/hovered */
+    color: #0369a1; 
     text-decoration: underline;
+}
+
+/* --- EMPTY STATE STYLING --- */
+.empty-message {
+    font-size: 14px;
+    color: #94a3b8; /* Muted grey text */
+    font-style: italic;
+    background: #f8fafc; /* Very light grey/blue background */
+    padding: 24px 16px;
+    border-radius: 12px;
+    border: 2px dashed #cbd5e1; /* Gives it that "placeholder" look */
+    text-align: center;
+    margin-top: 8px;
 }
