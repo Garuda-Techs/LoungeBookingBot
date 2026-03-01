@@ -311,7 +311,6 @@ function showBookingForm() {
     bookingTime.textContent = selectedTimeSlots.join(', '); 
    
     bookingForm.classList.remove('hidden');
-    bookingForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function hideBookingForm() {
