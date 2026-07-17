@@ -1,7 +1,7 @@
 {
   "name": "loungebookingbot",
   "version": "1.0.0",
-  "description": "Telegram Mini App for booking time slots at CAPT Garuda Lounge",
+  "description": "Telegram Mini App for booking time slots at NUS CAPT's Roc, Dragon, Garuda, Phoenix, and Tulpar house lounges",
   "main": "server.js",
   "engines": {
     "node": ">=18.0.0"
@@ -17,7 +17,7 @@
     "booking",
     "lounge"
   ],
-  "author": "CAPT Garuda",
+  "author": "NUS CAPT",
   "license": "ISC",
   "dependencies": {
     "body-parser": "^2.2.2",

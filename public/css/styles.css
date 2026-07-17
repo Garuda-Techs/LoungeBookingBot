@@ -1,10 +1,11 @@
 :root {
-    --primary-color: #f1c40f;    /* Golden Garuda Yellow */
-    --secondary-color: #f39c12;  /* Hover state yellow */
+    --primary-color: #f1c40f;    /* Default: Garuda Yellow (overridden per-house by JS) */
+    --secondary-color: #f39c12;  /* Hover state, follows --primary-color */
+    --on-primary-color: #000000; /* Readable text/icon color for surfaces painted with --primary-color */
     --success-color: #27ae60;
     --danger-color: #e74c3c;
     --bg-color: #ffffff;
-    --text-color: #000000;       
+    --text-color: #000000;
     --border-color: #e2e8f0;
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
@@ -62,8 +63,9 @@ header h1 {
 
 /* User Info Banner */
 .user-info {
-    background: #fef9c3; 
-    color: #000000;      
+    background: #fef9c3;
+    background: color-mix(in srgb, var(--primary-color) 15%, white);
+    color: #000000;
     padding: 16px;
     border-radius: 12px;
     margin-bottom: 24px;
@@ -71,12 +73,56 @@ header h1 {
     font-weight: 600;
 }
 
+/* --- HOUSE SELECTOR --- */
+.house-selector {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+    background: #f1f5f9;
+    padding: 6px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    overflow-x: auto;
+}
+
+.house-btn {
+    flex: 1;
+    min-width: 64px;
+    padding: 10px 4px;
+    border: none;
+    background: transparent;
+    border-radius: 12px;
+    font-size: 20px;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.house-btn span {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.house-btn.active {
+    background: #ffffff;
+    color: #000000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: scale(1.02);
+    border: 1px solid var(--primary-color);
+}
+
 /* --- LOUNGE LEVEL SELECTOR --- */
 .lounge-selector {
     display: flex;
     gap: 4px;
     margin-bottom: 24px;
-    background: #f1f5f9; 
+    background: #f1f5f9;
     padding: 6px;
     border-radius: 16px;
     border: 1px solid var(--border-color);
@@ -272,7 +318,7 @@ header h1 {
 
 .calendar-day.selected {
     background: var(--primary-color) !important;
-    color: #000000 !important;
+    color: var(--on-primary-color) !important;
     font-weight: 700;
 }
 
@@ -305,7 +351,7 @@ header h1 {
 
 .time-slot.selected-slot {
     background: var(--primary-color) !important;
-    color: #000000 !important;
+    color: var(--on-primary-color) !important;
     border-color: var(--secondary-color);
 }
 
@@ -347,6 +393,7 @@ header h1 {
     outline: none;
     border-color: var(--primary-color);
     background-color: #fffef0;
+    background-color: color-mix(in srgb, var(--primary-color) 6%, white);
 }
 
 /* --- BOOKING FORM & BUTTONS --- */
@@ -412,7 +459,7 @@ header h1 {
 
 .btn-primary {
     background: var(--primary-color);
-    color: #000000;
+    color: var(--on-primary-color);
     width: 100%;
 }
 
@@ -459,7 +506,7 @@ header h1 {
 
 .booking-card-time {
     font-weight: 700;
-    color: #000000;
+    color: var(--on-primary-color);
     background: var(--primary-color);
     padding: 4px 10px;
     border-radius: 20px;

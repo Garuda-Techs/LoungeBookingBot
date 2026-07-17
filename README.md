@@ -1,11 +1,21 @@
-# 🦅 CAPT Garuda Lounge Booking Bot
+# 🏢 CAPT Lounge Booking Bot
 
-A Telegram Mini App for booking time slots at the CAPT Garuda Lounge (Levels 9, 10, and 11). This bot provides a mobile-first interface for residents to select lounge levels, dates, and multi-hour time slots with automatic profile integration from Telegram.
+A Telegram Mini App for booking time slots at NUS CAPT's house lounges, shared across all five houses:
+
+| House | Color | Floors |
+|---|---|---|
+| 🐺 Roc | Blue | 3, 4, 5 |
+| 🐉 Dragon | Green | 6, 7, 8 |
+| 🐤 Garuda | Yellow | 9, 10, 11 |
+| 🐦‍🔥 Phoenix | Red | 12, 13, 14 |
+| 🐎 Tulpar | Black | 15, 16, 17 |
+
+This bot provides a mobile-first interface for residents to select their house, floor, date, and multi-hour time slots, with automatic profile integration from Telegram. It's a single shared deployment across all five houses, so hosting costs (and maintenance) are split rather than borne by one house alone.
 
 ## ✨ Features
 
 - 📱 **Telegram Mini App Integration** — Seamless integration with Telegram Mini Apps and `initDataUnsafe` profile autofill.
-- 🏢 **Multi-Level Support** — Independent booking tracks for Level 9, 10, and 11 lounges.
+- 🏠 **Multi-House, Multi-Level Support** — Independent booking tracks for all 15 floors across Roc, Dragon, Garuda, Phoenix, and Tulpar, each with its own live-switching theme color.
 - 👀 **At-a-Glance Dashboard** — Native-feeling horizontal swipe interface for viewing upcoming bookings by floor.
 - 🧠 **Smart Slot Grouping** — Frontend algorithm automatically merges consecutive 1-hour slots into clean, human-readable blocks (e.g., 12:00 - 15:00).
 - 📅 **Interactive Calendar** — Highlights selection, disables past dates, and prevents invalid ranges.
@@ -59,9 +69,10 @@ DB_PATH=/app/data/lounge_bookings.db
 
 ## 🏗️ Project Structure
 
-- `public/js/app.js` — Frontend logic (level switching, multi-slot selection, calendar tweaks).
+- `public/js/houses.js` — Shared house config (name, color, emoji, floor range per house) used by both the frontend and the backend.
+- `public/js/app.js` — Frontend logic (house/level switching, multi-slot selection, calendar tweaks).
 - `server.js` — Express server configured with `trust proxy`, rate limiting, and JSON parsing.
-- `routes/bookings.js` — Secure API endpoints featuring data sanitization for availability, booking, and cancellations.
+- `routes/bookings.js` — Secure API endpoints featuring data sanitization for availability, booking, and cancellations across all houses.
 - `database.js` — SQLite schema initialization and connection pooling.
 - `bot.js` — Telegram bot logic that opens the mini app and handles commands.
 
@@ -71,7 +82,7 @@ DB_PATH=/app/data/lounge_bookings.db
 
 `GET /api/bookings/available/:date?level=9`
 
-Returns available and booked slots for the specified lounge level and date.
+Returns available and booked slots for the specified lounge level and date. `level` accepts any floor 3–17 (Roc 3-5, Dragon 6-8, Garuda 9-11, Phoenix 12-14, Tulpar 15-17).
 
 Response sample:
 
@@ -100,7 +111,7 @@ Returns active bookings strictly bounded from the current day to the end of the 
 
 `POST /api/bookings`
 
-Accepts an array of consecutive hourly slots. The server validates overlaps and conflicts per lounge level.
+Accepts an array of consecutive hourly slots. The server validates `lounge_level` against every floor across all 5 houses (3–17), and checks overlaps/conflicts per lounge level.
 
 Request body example:
 
@@ -156,8 +167,8 @@ Request body example:
 
 ## ✅ Recent Updates
 
-
-- **Multi-Level & Multi-Slot:** Backend and frontend support selecting lounge level (9/10/11) and booking multiple consecutive slots.
+- **Multi-House Support:** Expanded from Garuda-only (Levels 9-11) to all 5 CAPT houses — Roc, Dragon, Garuda, Phoenix, and Tulpar (Levels 3-17) — with a house selector and live per-house theme colors, splitting hosting costs across houses.
+- **Multi-Level & Multi-Slot:** Backend and frontend support selecting lounge level and booking multiple consecutive slots.
 - **Int64 Sanitization:** Fixed a critical bug where massive Telegram IDs exceeded the 32-bit integer limit, ensuring flawless profile matching.
 - **Proxy Configuration:** Added Express `app.set('trust proxy', 1)` to fix rate-limiter IP blocking behind cloud proxies.
 - **Admin UI**: Added a dynamic "Admin: Cancel" button to the calendar modal that only renders for authorized users.
