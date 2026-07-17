@@ -18,9 +18,9 @@ bot.onText(/\/start/, (msg) => {
   const firstName = msg.from.first_name || 'there';
   
   const welcomeMessage = `
-Welcome to CAPT Garuda Lounge Booking Bot, ${firstName}! 🏢
+Welcome to the CAPT Lounge Booking Bot, ${firstName}! 🏢
 
-This bot helps you book time slots at the CAPT Garuda Lounge.
+This bot helps you book time slots at any of CAPT's house lounges — 🐺 Roc, 🐉 Dragon, 🐤 Garuda, 🐦‍🔥 Phoenix, and 🐎 Tulpar.
 
 Click the button below to open the booking app:
   `;
@@ -52,14 +52,15 @@ bot.onText(/\/help/, (msg) => {
   const chatId = msg.chat.id;
   
   const helpMessage = `
-📖 *Help - CAPT Garuda Lounge Booking*
+📖 *Help - CAPT Lounge Booking*
 
 *How to book:*
 1. Click "Book a Slot" button
-2. Select a date from the calendar
-3. Choose an available time slot
-4. Add any notes (optional)
-5. Confirm your booking
+2. Pick your house (Roc, Dragon, Garuda, Phoenix, or Tulpar) and floor
+3. Select a date from the calendar
+4. Choose an available time slot
+5. Add any notes (optional)
+6. Confirm your booking
 
 *Features:*
 • View available time slots in real-time
@@ -104,14 +105,15 @@ bot.on('callback_query', (query) => {
   
   if (query.data === 'help') {
     const helpMessage = `
-📖 *Help - CAPT Garuda Lounge Booking*
+📖 *Help - CAPT Lounge Booking*
 
 *How to book:*
 1. Click "Book a Slot" button
-2. Select a date from the calendar
-3. Choose an available time slot
-4. Add any notes (optional)
-5. Confirm your booking
+2. Pick your house (Roc, Dragon, Garuda, Phoenix, or Tulpar) and floor
+3. Select a date from the calendar
+4. Choose an available time slot
+5. Add any notes (optional)
+6. Confirm your booking
 
 *Features:*
 • View available time slots in real-time

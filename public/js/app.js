@@ -7,9 +7,11 @@ const ALL_TIME_SLOTS = Array.from({ length: 24 }, (_, i) => `${String(i).padStar
 // State
 let currentDate = new Date();
 let selectedDate = null;
-let selectedTimeSlots = []; 
-let selectedLevel = 9; // Default floor
-let isUserAdmin = false; 
+let selectedTimeSlots = [];
+let selectedHouse = localStorage.getItem('lastHouse') || 'garuda';
+if (!HOUSES[selectedHouse]) selectedHouse = 'garuda';
+let selectedLevel = HOUSES[selectedHouse].levels[0]; // Default floor
+let isUserAdmin = false;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
@@ -56,25 +58,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // --- 1. Level Switcher Logic ---
-    document.querySelectorAll('.level-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            // Update UI Active State
-            document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            
-            // Update State
-            selectedLevel = parseInt(this.dataset.level);
+    // --- 1. House & Level Switcher Logic ---
+    applyHouseTheme(selectedHouse);
+    renderLevelButtons(selectedHouse, selectedLevel);
 
-            // SYNC UI: Immediately update the confirmation text floor
-            const confirmLevel = document.getElementById('confirmLevel');
-            if (confirmLevel) {
-                confirmLevel.textContent = selectedLevel; 
-            }
-            
+    document.querySelectorAll('.house-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const houseKey = this.dataset.house;
+            if (houseKey === selectedHouse) return;
+
+            // Update UI Active State
+            document.querySelectorAll('.house-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+
+            // Update State
+            selectedHouse = houseKey;
+            localStorage.setItem('lastHouse', houseKey);
+            selectedLevel = HOUSES[houseKey].levels[0];
+
+            applyHouseTheme(houseKey);
+            renderLevelButtons(houseKey, selectedLevel);
+
             // Reset selections to avoid "ghost" bookings from other floors
-            selectedTimeSlots = []; 
-            hideBookingForm(); 
+            selectedTimeSlots = [];
+            hideBookingForm();
 
             // Refresh timings for the new floor if a date is already active
             if (selectedDate) {
@@ -88,11 +95,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initialize calendar
     renderCalendar();
-    
+
     // Load user's bookings
     await loadMyBookings();
 
-    // Load the upcoming bookings for the default floor (Level 9)
+    // Load the upcoming bookings for the default floor
     await loadUpcomingBookings(selectedLevel);
     
     // Global Event listeners
@@ -112,6 +119,56 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     document.getElementById('confirmBooking').addEventListener('click', confirmBooking);
 });
+
+function applyHouseTheme(houseKey) {
+    const house = HOUSES[houseKey];
+    if (!house) return;
+
+    document.documentElement.style.setProperty('--primary-color', house.primary);
+    document.documentElement.style.setProperty('--secondary-color', house.secondary);
+    document.documentElement.style.setProperty('--on-primary-color', house.onPrimary);
+
+    const houseEmoji = document.getElementById('houseEmoji');
+    const houseName = document.getElementById('houseName');
+    if (houseEmoji) houseEmoji.textContent = house.emoji;
+    if (houseName) houseName.textContent = house.name;
+}
+
+function renderLevelButtons(houseKey, activeLevel) {
+    const container = document.getElementById('levelSelector');
+    if (!container) return;
+
+    const house = HOUSES[houseKey];
+    container.innerHTML = '';
+
+    house.levels.forEach(level => {
+        const btn = document.createElement('button');
+        btn.className = 'level-btn' + (level === activeLevel ? ' active' : '');
+        btn.dataset.level = level;
+        btn.textContent = `Level ${level}`;
+
+        btn.addEventListener('click', () => {
+            container.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            selectedLevel = level;
+
+            const confirmLevel = document.getElementById('confirmLevel');
+            if (confirmLevel) confirmLevel.textContent = selectedLevel;
+
+            selectedTimeSlots = [];
+            hideBookingForm();
+
+            if (selectedDate) {
+                loadTimeSlots(selectedDate);
+            }
+
+            loadUpcomingBookings(selectedLevel);
+        });
+
+        container.appendChild(btn);
+    });
+}
 
 // Display user information
 function displayUserInfo() {
@@ -429,9 +486,12 @@ function displayMyBookings(bookings) {
         const [y, m, d] = booking.date.split('-');
         const dateStr = formatDate(new Date(y, m-1, d));
         
+        const bookingHouse = getHouseForLevel(booking.lounge_level);
+        const houseLabel = bookingHouse ? `${bookingHouse.emoji} ${bookingHouse.name}` : '';
+
         const dateEl = document.createElement('div');
         dateEl.className = 'booking-card-date';
-        dateEl.textContent = `Level ${booking.lounge_level} - ${dateStr}`;
+        dateEl.textContent = `${houseLabel} Level ${booking.lounge_level} - ${dateStr}`;
         
         const timeEl = document.createElement('div');
         timeEl.className = 'booking-card-time';
@@ -507,7 +567,8 @@ async function loadUpcomingBookings(level) {
     
     if (!container || !title) return;
 
-    title.innerText = `Upcoming on Level ${level}`;
+    const house = getHouseForLevel(level);
+    title.innerText = house ? `Upcoming on ${house.emoji} ${house.name} Level ${level}` : `Upcoming on Level ${level}`;
     container.innerHTML = `<p class="empty-state">Loading schedule...</p>`;
 
     try {

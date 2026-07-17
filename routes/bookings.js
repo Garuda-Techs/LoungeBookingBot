@@ -1,9 +1,14 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
 const db = require('../database');
+const { HOUSES } = require(path.join(__dirname, '..', 'public', 'js', 'houses.js'));
 
 // Generate 24 1-hour slots: ['00:00', '01:00', ..., '23:00']
 const ALL_TIME_SLOTS = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
+
+// Every valid lounge floor across all 5 houses (Roc 3-5, Dragon 6-8, Garuda 9-11, Phoenix 12-14, Tulpar 15-17)
+const VALID_LEVELS = Object.values(HOUSES).flatMap(h => h.levels);
 
 // Get or create user
 async function getOrCreateUser(telegramUser) {
@@ -87,8 +92,8 @@ router.post('/', async (req, res) => {
     const { telegramUser, date, timeSlots, notes, lounge_level } = req.body; 
     
     const level = parseInt(lounge_level);
-    if (![9, 10, 11].includes(level)) {
-      return res.status(400).json({ error: 'Invalid lounge level. Choose 9, 10, or 11.' });
+    if (!VALID_LEVELS.includes(level)) {
+      return res.status(400).json({ error: 'Invalid lounge level.' });
     }
 
     if (!telegramUser || !date || !timeSlots || !Array.isArray(timeSlots) || timeSlots.length === 0) {
@@ -149,7 +154,7 @@ router.post('/', async (req, res) => {
 router.get('/upcoming/:level', (req, res) => {
   try {
     const level = parseInt(req.params.level);
-    if (![9, 10, 11].includes(level)) {
+    if (!VALID_LEVELS.includes(level)) {
       return res.status(400).json({ error: 'Invalid lounge level.' });
     }
 
