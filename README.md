@@ -138,6 +138,9 @@ Request body example:
 
 ## 🔒 Security & Data Integrity
 
+- **Verified Identity:** In production, every booking, cancellation, and profile lookup requires a valid Telegram Mini App `initData` payload, whose HMAC signature is checked server-side against the bot token. Identity is derived from the verified payload — never trusted from the request body — so users cannot impersonate one another or forge admin access. Outside production, a local fallback identity is accepted for browser testing.
+- **Output Escaping:** User-supplied names and handles are HTML-escaped before rendering, preventing stored XSS via booking metadata.
+- **Slot Validation:** Requested time slots are validated against the known slot list and de-duplicated before insertion.
 - **Data Type Safety:** Telegram IDs are explicitly cast to strings and sanitized to prevent `.0` float artifacts in the database.
 - **Trust Proxy:** Support for correct client IP handling behind cloud proxies.
 - **Rate Limiting:** Middleware to mitigate API abuse while allowing trusted proxies.

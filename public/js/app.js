@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         displayUserInfo();
         try {
             const safeId = String(telegramUser.id).split('.')[0];
-            const adminRes = await fetch(`/api/bookings/is-admin/${safeId}`);
+            const adminRes = await fetch(`/api/bookings/is-admin/${safeId}`, { headers: tgHeaders() });
             if (adminRes.ok) {
                 const adminData = await adminRes.json();
                 isUserAdmin = adminData.isAdmin;
@@ -34,19 +34,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('Failed to check admin status', err);
         }
     } else {
-        // Fallback for testing on Desktop/Chrome without Telegram
+        // Fallback for testing on Desktop/Chrome without Telegram.
+        // This identity is only accepted by the server outside production.
         console.log("Running in local browser mode!");
         telegramUser = {
-            id: '1949513693', // Replaced with your real ID so you get Admin powers locally!
-            first_name: 'Gabriel',
-            last_name: 'Wan',
-            username: 'gabrielwan'
+            id: '100000001',
+            first_name: 'Local',
+            last_name: 'Dev',
+            username: 'localdev'
         };
         displayUserInfo();
-        
+
         // Still check admin status for the local fallback user
         try {
-            const adminRes = await fetch(`/api/bookings/is-admin/${telegramUser.id}`);
+            const adminRes = await fetch(`/api/bookings/is-admin/${telegramUser.id}`, { headers: tgHeaders() });
             if (adminRes.ok) {
                 const adminData = await adminRes.json();
                 isUserAdmin = adminData.isAdmin;
@@ -247,16 +248,19 @@ function displayTimeSlots(available, bookedDetails) {
             slotElement.onclick = () => {
                 const fullName = [detail.first_name, detail.last_name].filter(Boolean).join(' ');
                 const handleRaw = detail.telegram_username;
-                
-                // Create a clickable link if they have a handle
-                const handleLink = handleRaw 
-                    ? `<a href="https://t.me/${handleRaw}" target="_blank" class="tg-link">@${handleRaw}</a>` 
+
+                // Only treat it as a real handle if it matches Telegram's username
+                // rules; anything else is dropped so it can't inject markup.
+                const safeHandle = /^[A-Za-z0-9_]{1,32}$/.test(handleRaw || '') ? handleRaw : null;
+                const handleLink = safeHandle
+                    ? `<a href="https://t.me/${safeHandle}" target="_blank" class="tg-link">@${safeHandle}</a>`
                     : '';
-                
+
+                const safeName = escapeHtml(fullName);
                 // Format exactly as: @handle (name)
-                const displayNameHTML = handleLink && fullName
-                    ? `${handleLink} (${fullName})`
-                    : handleLink || fullName || 'Unknown user';
+                const displayNameHTML = handleLink && safeName
+                    ? `${handleLink} (${safeName})`
+                    : handleLink || safeName || 'Unknown user';
 
                 const note = detail.notes || 'No notes';
                 
@@ -342,7 +346,7 @@ async function confirmBooking() {
         const notes = document.getElementById('bookingNotes').value;
         const response = await fetch('/api/bookings', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: tgHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
                 telegramUser: telegramUser,
                 lounge_level: selectedLevel,
@@ -386,7 +390,7 @@ async function loadMyBookings() {
     if (!telegramUser) return;
     try {
         const safeId = String(telegramUser.id).split('.')[0];
-        const response = await fetch(`/api/bookings/user/${safeId}`);
+        const response = await fetch(`/api/bookings/user/${safeId}`, { headers: tgHeaders() });
         if (!response.ok) throw new Error('Failed to load');
         const bookings = await response.json();
         displayMyBookings(bookings);
@@ -475,7 +479,7 @@ async function handleDeleteBooking(bookingId) {
     try {
         const response = await fetch(`/api/bookings/${bookingId}`, {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
+            headers: tgHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ telegramId: telegramUser.id })
         });
         
@@ -575,12 +579,12 @@ async function loadUpcomingBookings(level) {
             const dateObj = new Date(y, m - 1, d);
             const dateString = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-            const displayName = booking.first_name || booking.telegram_username || 'User';
+            const displayName = escapeHtml(booking.first_name || booking.telegram_username || 'User');
 
             // Now we display start_time AND end_time!
             card.innerHTML = `
-                <div class="upcoming-date">${dateString}</div>
-                <div class="upcoming-time">${booking.time_slot} - ${booking.end_time}</div>
+                <div class="upcoming-date">${escapeHtml(dateString)}</div>
+                <div class="upcoming-time">${escapeHtml(booking.time_slot)} - ${escapeHtml(booking.end_time)}</div>
                 <div class="upcoming-user">👤 ${displayName}</div>
             `;
             container.appendChild(card);
@@ -593,6 +597,21 @@ async function loadUpcomingBookings(level) {
 }
 
 // Helpers
+
+// Attach the signed Telegram payload so the server can verify who we are.
+function tgHeaders(extra = {}) {
+    const headers = { ...extra };
+    if (tg && tg.initData) headers['X-Telegram-Init-Data'] = tg.initData;
+    return headers;
+}
+
+// Escape user-controlled text before it goes anywhere near innerHTML.
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[ch]));
+}
+
 function formatDate(date) {
     return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }

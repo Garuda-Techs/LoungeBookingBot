@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
+const { requireTelegramAuth } = require('../telegramAuth');
 
 // Generate 24 1-hour slots: ['00:00', '01:00', ..., '23:00']
 const ALL_TIME_SLOTS = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
+const VALID_SLOTS = new Set(ALL_TIME_SLOTS);
 
 // Get or create user
 async function getOrCreateUser(telegramUser) {
@@ -82,24 +84,34 @@ router.get('/available/:date', async (req, res) => {
 });
 
 // Create a new multi-slot booking for a specific level
-router.post('/', async (req, res) => {
+router.post('/', requireTelegramAuth, async (req, res) => {
   try {
-    const { telegramUser, date, timeSlots, notes, lounge_level } = req.body; 
-    
+    const { date, timeSlots, notes, lounge_level } = req.body;
+    const telegramUser = req.telegramUser; // verified identity, never trusted from body
+
     const level = parseInt(lounge_level);
     if (![9, 10, 11].includes(level)) {
       return res.status(400).json({ error: 'Invalid lounge level. Choose 9, 10, or 11.' });
     }
 
-    if (!telegramUser || !date || !timeSlots || !Array.isArray(timeSlots) || timeSlots.length === 0) {
+    if (!date || !timeSlots || !Array.isArray(timeSlots) || timeSlots.length === 0) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    
+
+    // Reject unknown slot strings and collapse duplicates so a single request
+    // can't smuggle in junk like "25:00" or violate the unique index.
+    const uniqueSlots = [...new Set(timeSlots)];
+    if (uniqueSlots.some(slot => !VALID_SLOTS.has(slot))) {
+      return res.status(400).json({ error: 'Invalid time slot(s).' });
+    }
+    timeSlots.length = 0;
+    timeSlots.push(...uniqueSlots);
+
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(date)) {
       return res.status(400).json({ error: 'Invalid date format.' });
     }
-    
+
     const bookingDate = new Date(date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -201,10 +213,11 @@ router.get('/upcoming/:level', (req, res) => {
 });
 
 // Get user's bookings (displays all levels)
-router.get('/user/:telegramId', async (req, res) => {
+router.get('/user/:telegramId', requireTelegramAuth, async (req, res) => {
   try {
-    // --- THE FIX: Clean the ID from params ---
-    const cleanId = String(req.params.telegramId).split('.')[0];
+    // Identity comes from the verified Telegram payload, not the URL param,
+    // so a user can only ever read their own bookings.
+    const cleanId = String(req.telegramUser.id).split('.')[0];
     const database = db.getDb();
     
     database.all(
@@ -224,9 +237,9 @@ router.get('/user/:telegramId', async (req, res) => {
 });
 
 // Check if a user is an admin
-router.get('/is-admin/:telegramId', (req, res) => {
+router.get('/is-admin/:telegramId', requireTelegramAuth, (req, res) => {
     try {
-        const cleanId = String(req.params.telegramId).split('.')[0];
+        const cleanId = String(req.telegramUser.id).split('.')[0];
         const adminEnv = process.env.ADMIN_IDS || '';
         const ADMIN_IDS = adminEnv.split(',').filter(id => id.trim()).map(id => id.trim());
         
@@ -237,17 +250,13 @@ router.get('/is-admin/:telegramId', (req, res) => {
 });
 
 // Cancel a booking (With Admin Override)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireTelegramAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { telegramId } = req.body;
-
-    if (!telegramId) {
-      return res.status(400).json({ error: 'User authorization required.' });
-    }
 
     const database = db.getDb();
-    const cleanId = String(telegramId).split('.')[0];
+    // Verified identity — the caller cannot claim to be someone else.
+    const cleanId = String(req.telegramUser.id).split('.')[0];
     
     const adminEnv = process.env.ADMIN_IDS || '';
     const ADMIN_IDS = adminEnv.split(',').filter(id => id.trim()).map(id => id.trim());
