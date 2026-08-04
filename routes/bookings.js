@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const db = require('../database');
 const { requireTelegramAuth } = require('../telegramAuth');
@@ -56,7 +57,7 @@ router.get('/available/:date', async (req, res) => {
     
     // UPDATED QUERY: JOIN with users to get the name and include notes
     const sql = `
-      SELECT b.id, b.time_slot, b.notes, u.first_name, u.last_name, u.telegram_username 
+      SELECT b.id, b.time_slot, b.notes, b.booking_group, u.first_name, u.last_name, u.telegram_username
       FROM bookings b
       JOIN users u ON b.user_id = u.id
       WHERE b.date = ? AND b.lounge_level = ? AND b.status = 'active'
@@ -134,15 +135,30 @@ router.post('/', requireTelegramAuth, async (req, res) => {
                 return res.status(409).json({ error: 'One or more slots on this floor are already booked!' });
             }
 
-            // Insert bookings with the lounge_level column
-            const insertPlaceholders = timeSlots.map(() => '(?, ?, ?, ?, ?, ?)').join(',');
+            // Split the slots into consecutive runs; every hour in a run shares
+            // one booking_group id so the run is treated as a single booking.
+            const sortedSlots = [...timeSlots].sort();
+            const slotGroup = {};
+            let currentGroupId = null;
+            let prevHour = null;
+            sortedSlots.forEach(slot => {
+                const hour = parseInt(slot.split(':')[0]);
+                if (prevHour === null || hour !== prevHour + 1) {
+                    currentGroupId = crypto.randomUUID(); // start of a new consecutive run
+                }
+                slotGroup[slot] = currentGroupId;
+                prevHour = hour;
+            });
+
+            // Insert bookings with the lounge_level and booking_group columns
+            const insertPlaceholders = timeSlots.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(',');
             const insertValues = [];
             timeSlots.forEach(slot => {
-                insertValues.push(user.id, level, date, slot, notes, 'active');
+                insertValues.push(user.id, level, date, slot, notes, 'active', slotGroup[slot]);
             });
 
             database.run(
-                `INSERT INTO bookings (user_id, lounge_level, date, time_slot, notes, status) VALUES ${insertPlaceholders}`,
+                `INSERT INTO bookings (user_id, lounge_level, date, time_slot, notes, status, booking_group) VALUES ${insertPlaceholders}`,
                 insertValues,
                 function(err) {
                     if (err) return res.status(500).json({ error: 'Failed to create booking' });
@@ -249,7 +265,48 @@ router.get('/is-admin/:telegramId', requireTelegramAuth, (req, res) => {
     }
 });
 
-// Cancel a booking (With Admin Override)
+// Cancel an entire booking group (all consecutive hours booked together)
+router.delete('/group/:groupId', requireTelegramAuth, async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const database = db.getDb();
+    const cleanId = String(req.telegramUser.id).split('.')[0];
+
+    const adminEnv = process.env.ADMIN_IDS || '';
+    const ADMIN_IDS = adminEnv.split(',').filter(id => id.trim()).map(id => id.trim());
+    const isAdmin = ADMIN_IDS.includes(cleanId);
+
+    let sql;
+    let params;
+
+    if (isAdmin) {
+        // God Mode: admin can cancel any group by its id
+        sql = `UPDATE bookings SET status = 'cancelled' WHERE booking_group = ? AND status = 'active'`;
+        params = [groupId];
+    } else {
+        // Normal Mode: users can only cancel groups they own
+        sql = `UPDATE bookings SET status = 'cancelled'
+               WHERE booking_group = ? AND status = 'active'
+                 AND user_id IN (SELECT id FROM users WHERE telegram_id = ?)`;
+        params = [groupId, cleanId];
+    }
+
+    database.run(sql, params, function(err) {
+      if (err) {
+        console.error('Database error during group cancellation:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Booking not found or unauthorized.' });
+      }
+      res.json({ message: 'Booking cancelled successfully', cancelled: this.changes });
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Cancel a single booking by id (With Admin Override)
 router.delete('/:id', requireTelegramAuth, async (req, res) => {
   try {
     const { id } = req.params;

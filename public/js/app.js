@@ -263,8 +263,11 @@ function displayTimeSlots(available, bookedDetails) {
                     : handleLink || safeName || 'Unknown user';
 
                 const note = detail.notes || 'No notes';
-                
-                showInfoModal(displayNameHTML, note, slot, detail.id);
+
+                showInfoModal(displayNameHTML, note, slot, {
+                    groupId: detail.booking_group || null,
+                    ids: [detail.id]
+                });
             };
 
         } else if (isPastSlot) {
@@ -421,77 +424,126 @@ function displayMyBookings(bookings) {
         return;
     }
     
-    futureBookings.forEach(booking => {
+    // Group hourly rows booked together (they share a booking_group) into a
+    // single card. Legacy rows without a group stand alone, keyed by their id.
+    const groupsMap = new Map();
+    futureBookings.forEach(b => {
+        const key = b.booking_group || `single-${b.id}`;
+        if (!groupsMap.has(key)) {
+            groupsMap.set(key, {
+                key,
+                groupId: b.booking_group || null,
+                lounge_level: b.lounge_level,
+                date: b.date,
+                notes: b.notes,
+                ids: [],
+                slots: []
+            });
+        }
+        const g = groupsMap.get(key);
+        g.ids.push(b.id);
+        g.slots.push(b.time_slot);
+        if (!g.notes && b.notes) g.notes = b.notes;
+    });
+
+    const groups = [...groupsMap.values()].map(g => {
+        g.slots.sort();
+        const startHour = parseInt(g.slots[0].split(':')[0]);
+        const endHour = parseInt(g.slots[g.slots.length - 1].split(':')[0]) + 1;
+        g.start = `${String(startHour).padStart(2, '0')}:00`;
+        g.end = `${String(endHour).padStart(2, '0')}:00`;
+        return g;
+    });
+
+    groups.sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
+
+    groups.forEach(group => {
         const card = document.createElement('div');
         card.className = 'booking-card';
-        
-        card.setAttribute('data-booking-id', booking.id);
+        card.setAttribute('data-group-key', group.key);
 
         const header = document.createElement('div');
         header.className = 'booking-card-header';
-        
-        const [y, m, d] = booking.date.split('-');
+
+        const [y, m, d] = group.date.split('-');
         const dateStr = formatDate(new Date(y, m-1, d));
-        
+
         const dateEl = document.createElement('div');
         dateEl.className = 'booking-card-date';
-        dateEl.textContent = `Level ${booking.lounge_level} - ${dateStr}`;
-        
+        dateEl.textContent = `Level ${group.lounge_level} - ${dateStr}`;
+
         const timeEl = document.createElement('div');
         timeEl.className = 'booking-card-time';
-        timeEl.textContent = booking.time_slot;
-        
+        timeEl.textContent = `${group.start} - ${group.end}`;
+
         header.appendChild(dateEl);
         header.appendChild(timeEl);
         card.appendChild(header);
-        
-        if (booking.notes) {
+
+        if (group.notes) {
             const notesEl = document.createElement('div');
             notesEl.className = 'booking-card-notes';
-            notesEl.textContent = booking.notes;
+            notesEl.textContent = group.notes;
             card.appendChild(notesEl);
         }
-        
+
         const actions = document.createElement('div');
         actions.className = 'booking-card-actions';
         const delBtn = document.createElement('button');
         delBtn.className = 'btn btn-danger';
         delBtn.textContent = 'Cancel';
-        // Renamed function call to avoid conflict
-        delBtn.addEventListener('click', () => handleDeleteBooking(booking.id));
-        
+        delBtn.addEventListener('click', () => cancelBookingGroup({
+            groupId: group.groupId,
+            ids: group.ids,
+            cardKey: group.key
+        }));
+
         actions.appendChild(delBtn);
         card.appendChild(actions);
         container.appendChild(card);
     });
 }
 
-async function handleDeleteBooking(bookingId) {
+// Cancel a whole booking (all consecutive hours booked together). Prefers the
+// single group-cancel endpoint; falls back to cancelling each id for legacy
+// rows that predate booking groups.
+async function cancelBookingGroup({ groupId, ids, cardKey }) {
     if (!confirm('Are you sure you want to cancel this booking?')) return;
 
     // 1. OPTIMISTIC UI: Dim the card instantly
-    const card = document.querySelector(`[data-booking-id="${bookingId}"]`);
+    const card = cardKey ? document.querySelector(`[data-group-key="${cardKey}"]`) : null;
     if (card) {
         card.style.opacity = '0.3';
         card.style.pointerEvents = 'none'; // Stop double-clicks that cause lag
     }
 
     try {
-        const response = await fetch(`/api/bookings/${bookingId}`, {
-            method: 'DELETE',
-            headers: tgHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ telegramId: telegramUser.id })
-        });
-        
-        if (!response.ok) throw new Error('Delete failed');
-        
+        let ok = false;
+        if (groupId) {
+            const response = await fetch(`/api/bookings/group/${encodeURIComponent(groupId)}`, {
+                method: 'DELETE',
+                headers: tgHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({ telegramId: telegramUser.id })
+            });
+            ok = response.ok;
+        } else if (Array.isArray(ids) && ids.length) {
+            const responses = await Promise.all(ids.map(id => fetch(`/api/bookings/${id}`, {
+                method: 'DELETE',
+                headers: tgHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({ telegramId: telegramUser.id })
+            })));
+            ok = responses.every(r => r.ok);
+        }
+
+        if (!ok) throw new Error('Delete failed');
+
         showToast('Booking cancelled!', 'success');
 
         // 2. PARALLEL REFRESH: Refresh everything at once instead of one-by-one
         Promise.all([
             loadMyBookings(),
             selectedDate ? loadTimeSlots(selectedDate) : Promise.resolve(),
-            loadUpcomingBookings(selectedLevel) // <--- ADD THIS LINE!
+            loadUpcomingBookings(selectedLevel)
         ]);
 
     } catch (error) {
@@ -638,19 +690,21 @@ function showToast(message, type = 'success') {
 }
 
 // --- Modal Logic ---
-function showInfoModal(displayNameHTML, note, time, bookingId) {
+function showInfoModal(displayNameHTML, note, time, cancelTarget) {
     document.getElementById('infoModalTitle').textContent = `Reserved at ${time}`;
-    document.getElementById('infoModalUser').innerHTML = displayNameHTML; 
+    document.getElementById('infoModalUser').innerHTML = displayNameHTML;
     document.getElementById('infoModalNote').textContent = note;
-    
+
     const infoModal = document.getElementById('infoModal');
 
     // Remove the old existing button if there is one
     const existingBtn = document.getElementById('adminDeleteBtn');
     if (existingBtn) existingBtn.remove();
 
+    const canCancel = cancelTarget && (cancelTarget.groupId || (cancelTarget.ids && cancelTarget.ids.length));
+
     // Use our new global variable instead of a hardcoded array!
-    if (isUserAdmin && bookingId) {
+    if (isUserAdmin && canCancel) {
         const modalContent = document.querySelector('.modal-content');
         const adminBtn = document.createElement('button');
         adminBtn.id = 'adminDeleteBtn';
@@ -658,12 +712,12 @@ function showInfoModal(displayNameHTML, note, time, bookingId) {
         adminBtn.style.marginTop = '15px';
         adminBtn.style.width = '100%';
         adminBtn.textContent = 'Admin: Cancel This Booking';
-        
+
         adminBtn.onclick = () => {
-            handleDeleteBooking(bookingId);
+            cancelBookingGroup({ groupId: cancelTarget.groupId, ids: cancelTarget.ids });
             infoModal.classList.add('hidden');
         };
-        
+
         modalContent.appendChild(adminBtn);
     }
 

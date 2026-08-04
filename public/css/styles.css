@@ -99,14 +99,6 @@ header h1 {
     gap: 2px;
 }
 
-.level-btn::after {
-    content: 'Floor';
-    font-size: 10px;
-    text-transform: uppercase;
-    opacity: 0.6;
-    letter-spacing: 0.5px;
-}
-
 .level-btn.active {
     background: #ffffff; 
     color: #000000;

@@ -54,11 +54,20 @@ function initialize() {
             time_slot TEXT NOT NULL,
             status TEXT DEFAULT 'active',
             notes TEXT,
+            booking_group TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id)
           )
         `);
-        
+
+        // Migration for databases created before booking_group existed.
+        // Consecutive slots booked together share this id so they act as one booking.
+        db.run(`ALTER TABLE bookings ADD COLUMN booking_group TEXT`, (err) => {
+          if (err && !/duplicate column name/i.test(err.message)) {
+            console.error('Migration error (booking_group):', err.message);
+          }
+        });
+
         // Create unique index for active bookings only - UPDATED to include lounge_level
         // This allows Level 9, 10, and 11 to have separate bookings at the same time.
         db.run(`
